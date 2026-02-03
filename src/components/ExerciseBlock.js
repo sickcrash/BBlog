@@ -32,7 +32,7 @@ const DeleteButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-export default function ExerciseBlock({ title, content, onTitleChange, onContentChange, onFocus, onDelete }) {
+export default function ExerciseBlock({ title, content, onTitleChange, onContentChange, onFocus, onDelete, placeholder }) {
   return (
     <Container>
       {onDelete && (
@@ -51,7 +51,7 @@ export default function ExerciseBlock({ title, content, onTitleChange, onContent
         multiline
         value={content}
         onChangeText={onContentChange}
-        placeholder="Sets x Reps @ Weight..."
+        placeholder={placeholder || "Sets x Reps @ Weight..."}
         placeholderTextColor="#999"
         scrollEnabled={false}
         onFocus={onFocus}

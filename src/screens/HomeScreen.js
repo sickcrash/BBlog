@@ -19,7 +19,7 @@ export default function HomeScreen() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isProgramVisible, setProgramVisible] = useState(false);
-  const { currentProgram, getLog, saveLog } = useWorkout();
+  const { currentProgram, getLog, saveLog, getLastLog } = useWorkout();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blocks, setBlocks] = useState([]);
 
@@ -34,7 +34,30 @@ export default function HomeScreen() {
     const loadLogs = async () => {
       if (selectedSession && currentProgram) {
         const loadedBlocks = await getLog(currentProgram, selectedSession, dateStr);
-        setBlocks(loadedBlocks);
+        if (loadedBlocks && loadedBlocks.length > 0) {
+            setBlocks(loadedBlocks);
+        } else {
+            // Try inheritance
+            const lastBlocks = await getLastLog(currentProgram, selectedSession, dateStr);
+            if (lastBlocks && lastBlocks.length > 0) {
+                const inheritedBlocks = lastBlocks.map(block => {
+                   if (block.type === 'exercise') {
+                       return {
+                           ...block,
+                           content: '', // Clear content
+                           placeholder: `Last: ${block.content || '...'}`
+                       };
+                   }
+                   // For text blocks, maybe we don't copy? Or copy as empty?
+                   // User said "list of exercises". Text blocks usually contextual.
+                   // Let's copy them but empty.
+                   return { ...block, content: '' };
+                });
+                setBlocks(inheritedBlocks);
+            } else {
+                setBlocks([]);
+            }
+        }
       } else {
         setBlocks([]);
       }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import styled from 'styled-components/native';
 import { useWorkout } from '../context/WorkoutContext';
-import { X, Check } from 'lucide-react-native';
+import { X, Check, Pencil } from 'lucide-react-native';
 
 const ModalContainer = styled.View`
   flex: 1;
@@ -40,10 +40,17 @@ const ProgramItem = styled.TouchableOpacity`
   align-items: center;
 `;
 
+const ProgramRowLeft = styled.View`
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+`;
+
 const ProgramText = styled.Text`
   font-size: 16px;
   color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.text};
   font-weight: ${props => props.active ? 'bold' : 'normal'};
+  margin-right: 8px;
 `;
 
 const NewProgramRow = styled.View`
@@ -60,17 +67,33 @@ const Input = styled.TextInput`
   margin-right: 8px;
 `;
 
+const EditInput = styled.TextInput`
+  flex: 1;
+  font-size: 16px;
+  padding: 0;
+  margin: 0;
+  border-bottom-width: 1px;
+  border-bottom-color: ${props => props.theme.colors.primary};
+`;
+
 const AddButton = styled.TouchableOpacity`
   background-color: ${props => props.theme.colors.primary};
   padding: 10px;
   border-radius: 8px;
 `;
 
+const ActionButton = styled.TouchableOpacity`
+    padding: 4px;
+`;
+
 export default function ProgramModal({ visible, onClose }) {
-  const { programs, currentProgram, setCurrentProgram, addProgram } = useWorkout();
+  const { programs, currentProgram, setCurrentProgram, addProgram, updateProgram } = useWorkout();
   const [newProgramName, setNewProgramName] = useState('');
+  const [editingProgram, setEditingProgram] = useState(null);
+  const [editValue, setEditValue] = useState('');
 
   const handleSelect = (program) => {
+    if (editingProgram) return;
     setCurrentProgram(program);
     onClose();
   };
@@ -80,6 +103,18 @@ export default function ProgramModal({ visible, onClose }) {
       addProgram(newProgramName.trim());
       setNewProgramName('');
     }
+  };
+
+  const startEdit = (program) => {
+      setEditingProgram(program);
+      setEditValue(program);
+  };
+
+  const submitEdit = () => {
+      if (editingProgram && editValue.trim()) {
+          updateProgram(editingProgram, editValue.trim());
+      }
+      setEditingProgram(null);
   };
 
   return (
@@ -98,8 +133,28 @@ export default function ProgramModal({ visible, onClose }) {
             keyExtractor={item => item}
             renderItem={({ item }) => (
               <ProgramItem onPress={() => handleSelect(item)}>
-                <ProgramText active={item === currentProgram}>{item}</ProgramText>
-                {item === currentProgram && <Check size={16} color="#007AFF" />}
+                <ProgramRowLeft>
+                    {editingProgram === item ? (
+                        <EditInput
+                            value={editValue}
+                            onChangeText={setEditValue}
+                            onBlur={submitEdit}
+                            onSubmitEditing={submitEdit}
+                            autoFocus
+                        />
+                    ) : (
+                        <>
+                            <ProgramText active={item === currentProgram}>{item}</ProgramText>
+                            {item === currentProgram && <Check size={16} color="#007AFF" />}
+                        </>
+                    )}
+                </ProgramRowLeft>
+
+                {!editingProgram && (
+                    <ActionButton onPress={() => startEdit(item)}>
+                        <Pencil size={16} color="#8E8E93" />
+                    </ActionButton>
+                )}
               </ProgramItem>
             )}
           />
