@@ -1,11 +1,13 @@
 import React from 'react';
 import styled from 'styled-components/native';
+import { X } from 'lucide-react-native';
 
 const Container = styled.View`
   padding-left: 12px;
   margin: 8px 16px;
   border-left-width: 2px;
   border-left-color: ${props => props.theme.colors.primary};
+  position: relative;
 `;
 
 const TitleInput = styled.TextInput`
@@ -13,6 +15,7 @@ const TitleInput = styled.TextInput`
   font-weight: bold;
   color: ${props => props.theme.colors.text};
   margin-bottom: 4px;
+  padding-right: 24px;
 `;
 
 const ContentInput = styled.TextInput`
@@ -21,9 +24,22 @@ const ContentInput = styled.TextInput`
   line-height: 24px;
 `;
 
-export default function ExerciseBlock({ title, content, onTitleChange, onContentChange, onFocus }) {
+const DeleteButton = styled.TouchableOpacity`
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px;
+  z-index: 10;
+`;
+
+export default function ExerciseBlock({ title, content, onTitleChange, onContentChange, onFocus, onDelete }) {
   return (
     <Container>
+      {onDelete && (
+        <DeleteButton onPress={onDelete}>
+          <X size={16} color="#8E8E93" />
+        </DeleteButton>
+      )}
       <TitleInput
         value={title}
         onChangeText={onTitleChange}

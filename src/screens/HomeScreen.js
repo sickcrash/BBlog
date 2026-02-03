@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
@@ -19,14 +19,34 @@ export default function HomeScreen() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isProgramVisible, setProgramVisible] = useState(false);
-  const { currentProgram } = useWorkout();
+  const { currentProgram, getLog, saveLog } = useWorkout();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [blocks, setBlocks] = useState([]);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
 
   const handleDateSelect = (dateString) => {
     setCurrentDate(new Date(dateString));
     setCalendarVisible(false);
+  };
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (selectedSession && currentProgram) {
+        const loadedBlocks = await getLog(currentProgram, selectedSession, dateStr);
+        setBlocks(loadedBlocks);
+      } else {
+        setBlocks([]);
+      }
+    };
+    loadLogs();
+  }, [currentProgram, selectedSession, dateStr]);
+
+  const handleUpdateBlocks = (newBlocks) => {
+    setBlocks(newBlocks);
+    if (selectedSession && currentProgram) {
+      saveLog(currentProgram, selectedSession, dateStr, newBlocks);
+    }
   };
 
   return (
@@ -41,7 +61,10 @@ export default function HomeScreen() {
         selectedSession={selectedSession}
         onSelect={setSelectedSession}
       />
-      <BlockList date={dateStr} />
+      <BlockList
+        blocks={blocks}
+        onUpdateBlocks={handleUpdateBlocks}
+      />
       <CalendarModal
         visible={isCalendarVisible}
         onClose={() => setCalendarVisible(false)}

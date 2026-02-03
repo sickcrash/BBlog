@@ -6,7 +6,6 @@ const WorkoutContext = createContext();
 export const WorkoutProvider = ({ children }) => {
   const [programs, setPrograms] = useState(['Program 1']);
   const [currentProgram, setCurrentProgram] = useState('Program 1');
-  const [logs, setLogs] = useState({}); // { "2023-10-27": [ { type: 'exercise', ... } ] }
   const [calendarRanges, setCalendarRanges] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -18,7 +17,7 @@ export const WorkoutProvider = ({ children }) => {
     if (isLoaded) {
       saveData();
     }
-  }, [programs, currentProgram, logs, calendarRanges, isLoaded]);
+  }, [programs, currentProgram, calendarRanges, isLoaded]);
 
   const loadData = async () => {
     try {
@@ -27,7 +26,6 @@ export const WorkoutProvider = ({ children }) => {
         const parsed = JSON.parse(storedData);
         setPrograms(parsed.programs || ['Program 1']);
         setCurrentProgram(parsed.currentProgram || 'Program 1');
-        setLogs(parsed.logs || {});
         setCalendarRanges(parsed.calendarRanges || []);
       }
     } catch (e) {
@@ -42,7 +40,6 @@ export const WorkoutProvider = ({ children }) => {
       const data = {
         programs,
         currentProgram,
-        logs,
         calendarRanges,
       };
       await AsyncStorage.setItem('gymnotes_data', JSON.stringify(data));
@@ -51,14 +48,32 @@ export const WorkoutProvider = ({ children }) => {
     }
   };
 
-  const updateLog = (date, blocks) => {
-    setLogs(prev => ({
-      ...prev,
-      [date]: {
+  const getLog = async (program, session, date) => {
+    try {
+      const key = `@Log_${program}_${session}_${date}`;
+      const stored = await AsyncStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.blocks || [];
+      }
+      return [];
+    } catch (e) {
+      console.error("Failed to get log", e);
+      return [];
+    }
+  };
+
+  const saveLog = async (program, session, date, blocks) => {
+    try {
+      const key = `@Log_${program}_${session}_${date}`;
+      const data = {
         blocks,
         lastModified: Date.now()
-      }
-    }));
+      };
+      await AsyncStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.error("Failed to save log", e);
+    }
   };
 
   const addProgram = (name) => {
@@ -73,12 +88,12 @@ export const WorkoutProvider = ({ children }) => {
       programs,
       currentProgram,
       setCurrentProgram,
-      logs,
-      updateLog,
       calendarRanges,
       setCalendarRanges,
       addProgram,
-      isLoaded
+      isLoaded,
+      getLog,
+      saveLog
     }}>
       {children}
     </WorkoutContext.Provider>

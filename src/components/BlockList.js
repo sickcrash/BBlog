@@ -1,11 +1,9 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import styled from 'styled-components/native';
-import { format } from 'date-fns';
-import { useWorkout } from '../context/WorkoutContext';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
-import { Plus } from 'lucide-react-native';
+import { Plus, Trash2 } from 'lucide-react-native';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -28,6 +26,20 @@ const AddButtonText = styled.Text`
   margin-left: 8px;
 `;
 
+const ClearButton = styled.TouchableOpacity`
+  margin-top: 16px;
+  margin-bottom: 32px;
+  align-self: center;
+  flex-direction: row;
+  align-items: center;
+`;
+
+const ClearButtonText = styled.Text`
+  color: #FF3B30;
+  font-weight: 600;
+  margin-left: 8px;
+`;
+
 const Container = styled.ScrollView`
   flex: 1;
   background-color: ${props => props.theme.colors.background};
@@ -37,23 +49,28 @@ const ContentArea = styled.View`
   padding-bottom: 100px;
 `;
 
-export default function BlockList({ date }) {
-  const { logs, updateLog } = useWorkout();
-  const logData = logs[date];
-  const blocks = logData?.blocks || [];
-  const lastModified = logData?.lastModified;
+export default function BlockList({ blocks = [], onUpdateBlocks }) {
 
   const handleUpdateBlock = (index, newBlock) => {
     const newBlocks = [...blocks];
     newBlocks[index] = newBlock;
-    updateLog(date, newBlocks);
+    onUpdateBlocks(newBlocks);
   };
 
   const handleAddBlock = (type) => {
     const newBlock = type === 'exercise'
       ? { type: 'exercise', title: '', content: '' }
       : { type: 'text', content: '' };
-    updateLog(date, [...blocks, newBlock]);
+    onUpdateBlocks([...blocks, newBlock]);
+  };
+
+  const handleDeleteBlock = (index) => {
+    const newBlocks = blocks.filter((_, i) => i !== index);
+    onUpdateBlocks(newBlocks);
+  };
+
+  const handleClearLog = () => {
+    onUpdateBlocks([]);
   };
 
   return (
@@ -64,11 +81,6 @@ export default function BlockList({ date }) {
     >
       <Container contentContainerStyle={{ paddingBottom: 100 }}>
         <ContentArea>
-          {lastModified && (
-            <Text style={{textAlign: 'center', color: '#8E8E93', marginVertical: 10, fontSize: 12}}>
-              Last modified: {format(lastModified, "MMM d, h:mm a")}
-            </Text>
-          )}
           {blocks.map((block, index) => {
             if (block.type === 'exercise') {
               return (
@@ -78,6 +90,7 @@ export default function BlockList({ date }) {
                   content={block.content}
                   onTitleChange={(text) => handleUpdateBlock(index, { ...block, title: text })}
                   onContentChange={(text) => handleUpdateBlock(index, { ...block, content: text })}
+                  onDelete={() => handleDeleteBlock(index)}
                 />
               );
             } else {
@@ -86,6 +99,7 @@ export default function BlockList({ date }) {
                   key={index}
                   content={block.content}
                   onChange={(text) => handleUpdateBlock(index, { ...block, content: text })}
+                  onDelete={() => handleDeleteBlock(index)}
                 />
               );
             }
@@ -101,6 +115,14 @@ export default function BlockList({ date }) {
               <AddButtonText>Note</AddButtonText>
             </AddButton>
           </AddButtonContainer>
+
+          {blocks.length > 0 && (
+             <ClearButton onPress={handleClearLog}>
+                <Trash2 size={20} color="#FF3B30" />
+                <ClearButtonText>Clear Log</ClearButtonText>
+             </ClearButton>
+          )}
+
         </ContentArea>
       </Container>
     </KeyboardAvoidingView>
