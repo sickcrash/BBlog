@@ -1,8 +1,8 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
-import { format } from 'date-fns';
-import { Check, ChevronDown } from 'lucide-react-native';
+import { format, isSameDay } from 'date-fns';
+import { CalendarCheck, History, ChevronDown } from 'lucide-react-native';
 import { useWorkout } from '../context/WorkoutContext';
 
 const Container = styled.View`
@@ -44,6 +44,7 @@ const DateText = styled.Text`
 export default function Header({ onProgramPress, onDatePress, date }) {
   const { currentProgram } = useWorkout();
   const dateStr = format(date || new Date(), 'MMM d');
+  const isToday = isSameDay(date || new Date(), new Date());
 
   return (
     <Container>
@@ -55,7 +56,11 @@ export default function Header({ onProgramPress, onDatePress, date }) {
       <TouchableOpacity onPress={onDatePress}>
         <DateBadge>
           <DateText>{dateStr}</DateText>
-          <Check size={16} color="#8E8E93" />
+          {isToday ? (
+             <CalendarCheck size={16} color="#8E8E93" />
+          ) : (
+             <History size={16} color="#8E8E93" />
+          )}
         </DateBadge>
       </TouchableOpacity>
     </Container>

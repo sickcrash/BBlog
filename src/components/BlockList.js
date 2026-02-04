@@ -1,11 +1,11 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
-import { format } from 'date-fns';
-import { useWorkout } from '../context/WorkoutContext';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
-import { Plus } from 'lucide-react-native';
+import { Plus, Trash2 } from 'lucide-react-native';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -14,7 +14,8 @@ const AddButtonContainer = styled.View`
   gap: 16px;
 `;
 
-const AddButton = styled.TouchableOpacity`
+// Use RNTouchableOpacity for static buttons to ensure they work reliably
+const AddButton = styled(RNTouchableOpacity)`
   background-color: ${props => props.theme.colors.highlight};
   padding: 10px 20px;
   border-radius: 20px;
@@ -28,32 +29,83 @@ const AddButtonText = styled.Text`
   margin-left: 8px;
 `;
 
-const Container = styled.ScrollView`
-  flex: 1;
-  background-color: ${props => props.theme.colors.background};
+const ClearButton = styled(RNTouchableOpacity)`
+  margin-top: 16px;
+  margin-bottom: 32px;
+  align-self: center;
+  flex-direction: row;
+  align-items: center;
+`;
+
+const ClearButtonText = styled.Text`
+  color: #FF3B30;
+  font-weight: 600;
+  margin-left: 8px;
 `;
 
 const ContentArea = styled.View`
   padding-bottom: 100px;
 `;
 
-export default function BlockList({ date }) {
-  const { logs, updateLog } = useWorkout();
-  const logData = logs[date];
-  const blocks = logData?.blocks || [];
-  const lastModified = logData?.lastModified;
+export default function BlockList({ blocks = [], onUpdateBlocks }) {
 
   const handleUpdateBlock = (index, newBlock) => {
     const newBlocks = [...blocks];
     newBlocks[index] = newBlock;
-    updateLog(date, newBlocks);
+    onUpdateBlocks(newBlocks);
   };
 
   const handleAddBlock = (type) => {
     const newBlock = type === 'exercise'
-      ? { type: 'exercise', title: '', content: '' }
-      : { type: 'text', content: '' };
-    updateLog(date, [...blocks, newBlock]);
+      ? { type: 'exercise', title: '', content: '', id: Date.now().toString() }
+      : { type: 'text', content: '', id: Date.now().toString() };
+    onUpdateBlocks([...blocks, newBlock]);
+  };
+
+  const handleDeleteBlock = (index) => {
+    const newBlocks = blocks.filter((_, i) => i !== index);
+    onUpdateBlocks(newBlocks);
+  };
+
+  const handleClearLog = () => {
+    onUpdateBlocks([]);
+  };
+
+  const renderItem = ({ item, drag, isActive, index }) => {
+    if (index === undefined) return null;
+
+    // Use GHTouchableOpacity for draggable items
+    return (
+      <ScaleDecorator>
+        <GHTouchableOpacity
+          onLongPress={drag}
+          disabled={isActive}
+          activeOpacity={1}
+          style={{
+             opacity: isActive ? 0.7 : 1,
+             backgroundColor: isActive ? '#f0f0f0' : 'transparent'
+          }}
+        >
+          {item.type === 'exercise' ? (
+             <ExerciseBlock
+               title={item.title}
+               content={item.content}
+               placeholder={item.placeholder}
+               onTitleChange={(text) => handleUpdateBlock(index, { ...item, title: text })}
+               onContentChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+               onDelete={() => handleDeleteBlock(index)}
+             />
+          ) : (
+             <TextBlock
+               content={item.content}
+               placeholder={item.placeholder}
+               onChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+               onDelete={() => handleDeleteBlock(index)}
+             />
+          )}
+        </GHTouchableOpacity>
+      </ScaleDecorator>
+    );
   };
 
   return (
@@ -62,47 +114,34 @@ export default function BlockList({ date }) {
       style={{ flex: 1 }}
       keyboardVerticalOffset={100}
     >
-      <Container contentContainerStyle={{ paddingBottom: 100 }}>
-        <ContentArea>
-          {lastModified && (
-            <Text style={{textAlign: 'center', color: '#8E8E93', marginVertical: 10, fontSize: 12}}>
-              Last modified: {format(lastModified, "MMM d, h:mm a")}
-            </Text>
-          )}
-          {blocks.map((block, index) => {
-            if (block.type === 'exercise') {
-              return (
-                <ExerciseBlock
-                  key={index}
-                  title={block.title}
-                  content={block.content}
-                  onTitleChange={(text) => handleUpdateBlock(index, { ...block, title: text })}
-                  onContentChange={(text) => handleUpdateBlock(index, { ...block, content: text })}
-                />
-              );
-            } else {
-              return (
-                <TextBlock
-                  key={index}
-                  content={block.content}
-                  onChange={(text) => handleUpdateBlock(index, { ...block, content: text })}
-                />
-              );
-            }
-          })}
+      <DraggableFlatList
+        data={blocks}
+        onDragEnd={({ data }) => onUpdateBlocks(data)}
+        keyExtractor={(item) => item.id || `block-${Math.random()}`}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+        ListFooterComponent={() => (
+           <View>
+              <AddButtonContainer>
+                <AddButton onPress={() => handleAddBlock('exercise')}>
+                  <Plus size={20} color="#007AFF" />
+                  <AddButtonText>Exercise</AddButtonText>
+                </AddButton>
+                <AddButton onPress={() => handleAddBlock('text')}>
+                  <Plus size={20} color="#007AFF" />
+                  <AddButtonText>Note</AddButtonText>
+                </AddButton>
+              </AddButtonContainer>
 
-          <AddButtonContainer>
-            <AddButton onPress={() => handleAddBlock('exercise')}>
-              <Plus size={20} color="#007AFF" />
-              <AddButtonText>Exercise</AddButtonText>
-            </AddButton>
-            <AddButton onPress={() => handleAddBlock('text')}>
-              <Plus size={20} color="#007AFF" />
-              <AddButtonText>Note</AddButtonText>
-            </AddButton>
-          </AddButtonContainer>
-        </ContentArea>
-      </Container>
+              {blocks.length > 0 && (
+                 <ClearButton onPress={handleClearLog}>
+                    <Trash2 size={20} color="#FF3B30" />
+                    <ClearButtonText>Clear Log</ClearButtonText>
+                 </ClearButton>
+              )}
+           </View>
+        )}
+      />
     </KeyboardAvoidingView>
   );
 }
