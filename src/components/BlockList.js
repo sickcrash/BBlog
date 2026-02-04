@@ -57,8 +57,8 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
 
   const handleAddBlock = (type) => {
     const newBlock = type === 'exercise'
-      ? { type: 'exercise', title: '', content: '' }
-      : { type: 'text', content: '' };
+      ? { type: 'exercise', title: '', content: '', id: Date.now().toString() }
+      : { type: 'text', content: '', id: Date.now().toString() };
     onUpdateBlocks([...blocks, newBlock]);
   };
 
@@ -117,9 +117,9 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
       <DraggableFlatList
         data={blocks}
         onDragEnd={({ data }) => onUpdateBlocks(data)}
-        keyExtractor={(item, index) => `block-${index}`}
+        keyExtractor={(item) => item.id || `block-${Math.random()}`}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
         ListFooterComponent={() => (
            <View>
               <AddButtonContainer>

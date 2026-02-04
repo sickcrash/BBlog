@@ -19,7 +19,7 @@ export default function HomeScreen() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isProgramVisible, setProgramVisible] = useState(false);
-  const { currentProgram, getLog, saveLog, getLastLog, getSessionForDate } = useWorkout();
+  const { currentProgram, getLog, saveLog, getLastLog, sessionMap, sessions } = useWorkout();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blocks, setBlocks] = useState([]);
 
@@ -30,19 +30,14 @@ export default function HomeScreen() {
     setCalendarVisible(false);
   };
 
-  // Auto-select session on date change
   useEffect(() => {
-      const checkSession = async () => {
-          const session = await getSessionForDate(currentProgram, dateStr);
-          if (session) {
-              setSelectedSession(session);
-          } else {
-              // If no session found for this date, reset selection
-              setSelectedSession(null);
-          }
-      };
-      checkSession();
-  }, [currentProgram, dateStr, getSessionForDate]);
+      // Look up session from sessionMap
+      if (sessionMap && sessionMap[dateStr]) {
+          setSelectedSession(sessionMap[dateStr]);
+      } else {
+          setSelectedSession(null);
+      }
+  }, [dateStr, sessionMap]);
 
   useEffect(() => {
     const loadLogs = async () => {
@@ -51,24 +46,26 @@ export default function HomeScreen() {
         if (loadedBlocks && loadedBlocks.length > 0) {
             setBlocks(loadedBlocks);
         } else {
-            // Try inheritance
+            // Inheritance
             const lastBlocks = await getLastLog(currentProgram, selectedSession, dateStr);
             if (lastBlocks && lastBlocks.length > 0) {
                 const inheritedBlocks = lastBlocks.map(block => {
                    if (block.type === 'exercise') {
                        return {
                            ...block,
-                           content: '', // Clear content
+                           id: Date.now().toString() + Math.random().toString(), // Ensure new IDs
+                           content: '',
                            placeholder: `Last: ${block.content || '...'}`
                        };
                    } else if (block.type === 'text') {
                        return {
                            ...block,
+                           id: Date.now().toString() + Math.random().toString(),
                            content: '',
                            placeholder: block.content ? `Last note: ${block.content}` : 'Write a note...'
                        }
                    }
-                   return { ...block, content: '' };
+                   return { ...block, id: Date.now().toString() + Math.random().toString(), content: '' };
                 });
                 setBlocks(inheritedBlocks);
             } else {
@@ -83,9 +80,19 @@ export default function HomeScreen() {
   }, [currentProgram, selectedSession, dateStr]);
 
   const handleUpdateBlocks = (newBlocks) => {
-    setBlocks(newBlocks);
-    if (selectedSession && currentProgram) {
-      saveLog(currentProgram, selectedSession, dateStr, newBlocks);
+    // If no session selected, try to select default (first session)
+    let sessionToUse = selectedSession;
+    if (!sessionToUse && newBlocks.length > 0) {
+        // Auto-select first session if available
+        if (sessions && sessions.length > 0) {
+            sessionToUse = sessions[0];
+            setSelectedSession(sessionToUse);
+        }
+    }
+
+    if (sessionToUse && currentProgram) {
+        setBlocks(newBlocks);
+        saveLog(currentProgram, sessionToUse, dateStr, newBlocks);
     }
   };
 

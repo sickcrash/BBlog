@@ -53,6 +53,7 @@ const EditInput = styled.TextInput`
 
 const DeleteButton = styled.TouchableOpacity`
   margin-left: 8px;
+  padding: 4px;
 `;
 
 export default function SessionSelector({ selectedSession, onSelect }) {
@@ -123,7 +124,10 @@ export default function SessionSelector({ selectedSession, onSelect }) {
                   autoFocus
                   returnKeyType="done"
                 />
-                <DeleteButton onPress={() => handleDelete(session)}>
+                <DeleteButton
+                    onPress={() => handleDelete(session)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                     <X size={16} color="white" />
                 </DeleteButton>
               </ChipContent>
