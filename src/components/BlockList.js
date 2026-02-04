@@ -4,6 +4,7 @@ import styled from 'styled-components/native';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
 import { Plus, Trash2 } from 'lucide-react-native';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -40,11 +41,6 @@ const ClearButtonText = styled.Text`
   margin-left: 8px;
 `;
 
-const Container = styled.ScrollView`
-  flex: 1;
-  background-color: ${props => props.theme.colors.background};
-`;
-
 const ContentArea = styled.View`
   padding-bottom: 100px;
 `;
@@ -73,58 +69,82 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
     onUpdateBlocks([]);
   };
 
+  const renderItem = ({ item, drag, isActive, index }) => {
+    if (index === undefined) return null;
+
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity
+          onLongPress={drag}
+          disabled={isActive}
+          activeOpacity={1}
+          style={{
+             opacity: isActive ? 0.7 : 1,
+             backgroundColor: isActive ? '#f0f0f0' : 'transparent'
+          }}
+        >
+          {item.type === 'exercise' ? (
+             <ExerciseBlock
+               title={item.title}
+               content={item.content}
+               placeholder={item.placeholder}
+               onTitleChange={(text) => handleUpdateBlock(index, { ...item, title: text })}
+               onContentChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+               onDelete={() => handleDeleteBlock(index)}
+             />
+          ) : (
+             <TextBlock
+               content={item.content}
+               placeholder={item.placeholder}
+               onChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+               onDelete={() => handleDeleteBlock(index)}
+             />
+          )}
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
+
+  // We need TouchableOpacity from react-native, but it conflicts with styled-components if not careful?
+  // Actually we need `import { TouchableOpacity } from 'react-native'` explicitly if we use it inside.
+  // Oh, wait, I didn't import TouchableOpacity.
+
+  const { TouchableOpacity } = require('react-native');
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
       keyboardVerticalOffset={100}
     >
-      <Container contentContainerStyle={{ paddingBottom: 100 }}>
-        <ContentArea>
-          {blocks.map((block, index) => {
-            if (block.type === 'exercise') {
-              return (
-                <ExerciseBlock
-                  key={index}
-                  title={block.title}
-                  content={block.content}
-                  onTitleChange={(text) => handleUpdateBlock(index, { ...block, title: text })}
-                  onContentChange={(text) => handleUpdateBlock(index, { ...block, content: text })}
-                  onDelete={() => handleDeleteBlock(index)}
-                />
-              );
-            } else {
-              return (
-                <TextBlock
-                  key={index}
-                  content={block.content}
-                  onChange={(text) => handleUpdateBlock(index, { ...block, content: text })}
-                  onDelete={() => handleDeleteBlock(index)}
-                />
-              );
-            }
-          })}
+      <DraggableFlatList
+        data={blocks}
+        onDragEnd={({ data }) => onUpdateBlocks(data)}
+        keyExtractor={(item, index) => `block-${index}`}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        ListFooterComponent={() => (
+           <View>
+              <AddButtonContainer>
+                <AddButton onPress={() => handleAddBlock('exercise')}>
+                  <Plus size={20} color="#007AFF" />
+                  <AddButtonText>Exercise</AddButtonText>
+                </AddButton>
+                <AddButton onPress={() => handleAddBlock('text')}>
+                  <Plus size={20} color="#007AFF" />
+                  <AddButtonText>Note</AddButtonText>
+                </AddButton>
+              </AddButtonContainer>
 
-          <AddButtonContainer>
-            <AddButton onPress={() => handleAddBlock('exercise')}>
-              <Plus size={20} color="#007AFF" />
-              <AddButtonText>Exercise</AddButtonText>
-            </AddButton>
-            <AddButton onPress={() => handleAddBlock('text')}>
-              <Plus size={20} color="#007AFF" />
-              <AddButtonText>Note</AddButtonText>
-            </AddButton>
-          </AddButtonContainer>
-
-          {blocks.length > 0 && (
-             <ClearButton onPress={handleClearLog}>
-                <Trash2 size={20} color="#FF3B30" />
-                <ClearButtonText>Clear Log</ClearButtonText>
-             </ClearButton>
-          )}
-
-        </ContentArea>
-      </Container>
+              {blocks.length > 0 && (
+                 <ClearButton onPress={handleClearLog}>
+                    <Trash2 size={20} color="#FF3B30" />
+                    <ClearButtonText>Clear Log</ClearButtonText>
+                 </ClearButton>
+              )}
+           </View>
+        )}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -19,7 +19,7 @@ export default function HomeScreen() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isProgramVisible, setProgramVisible] = useState(false);
-  const { currentProgram, getLog, saveLog, getLastLog } = useWorkout();
+  const { currentProgram, getLog, saveLog, getLastLog, getSessionForDate } = useWorkout();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blocks, setBlocks] = useState([]);
 
@@ -29,6 +29,20 @@ export default function HomeScreen() {
     setCurrentDate(new Date(dateString));
     setCalendarVisible(false);
   };
+
+  // Auto-select session on date change
+  useEffect(() => {
+      const checkSession = async () => {
+          const session = await getSessionForDate(currentProgram, dateStr);
+          if (session) {
+              setSelectedSession(session);
+          } else {
+              // If no session found for this date, reset selection
+              setSelectedSession(null);
+          }
+      };
+      checkSession();
+  }, [currentProgram, dateStr, getSessionForDate]);
 
   useEffect(() => {
     const loadLogs = async () => {

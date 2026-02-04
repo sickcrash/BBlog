@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components/native';
 import { useWorkout } from '../context/WorkoutContext';
-import { Plus, X } from 'lucide-react-native';
+import { Plus, X, Pencil } from 'lucide-react-native';
 import { TextInput, Alert, TouchableOpacity } from 'react-native';
 
 const Container = styled.View`
@@ -55,6 +55,10 @@ const DeleteButton = styled.TouchableOpacity`
   margin-left: 8px;
 `;
 
+const EditIcon = styled.View`
+    margin-right: 4px;
+`;
+
 export default function SessionSelector({ selectedSession, onSelect }) {
   const { sessions, addSession, updateSession, deleteSession } = useWorkout();
   const [editingSession, setEditingSession] = useState(null);
@@ -75,7 +79,6 @@ export default function SessionSelector({ selectedSession, onSelect }) {
   const handleSubmit = () => {
     if (editingSession && editValue.trim()) {
       updateSession(editingSession, editValue.trim());
-      // Re-select if it was active
       if (selectedSession === editingSession) {
           onSelect(editValue.trim());
       }
@@ -129,7 +132,14 @@ export default function SessionSelector({ selectedSession, onSelect }) {
                 </DeleteButton>
               </ChipContent>
             ) : (
-              <ChipText selected={selectedSession === session}>{session}</ChipText>
+              <ChipContent>
+                 {selectedSession === session && (
+                     <EditIcon>
+                         <Pencil size={12} color="white" />
+                     </EditIcon>
+                 )}
+                 <ChipText selected={selectedSession === session}>{session}</ChipText>
+              </ChipContent>
             )}
           </Chip>
         ))}

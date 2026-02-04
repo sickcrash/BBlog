@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 
 const WorkoutContext = createContext();
 
@@ -59,7 +59,9 @@ export const WorkoutProvider = ({ children }) => {
       const keys = await AsyncStorage.getAllKeys();
       const logKeys = keys.filter(k => k.startsWith('@Log_'));
       const newMarked = {};
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
 
+      // Process logs
       for (const key of logKeys) {
         const parts = key.split('_');
         const date = parts[parts.length - 1];
@@ -68,10 +70,21 @@ export const WorkoutProvider = ({ children }) => {
         if (dataStr) {
            const data = JSON.parse(dataStr);
            if (data.blocks && data.blocks.length > 0) {
-              newMarked[date] = { marked: true, dotColor: '#007AFF' };
+              if (!newMarked[date]) newMarked[date] = { dots: [] };
+              // Avoid duplicate dots if multiple logs for same day
+              if (!newMarked[date].dots.find(d => d.key === 'log')) {
+                  newMarked[date].dots.push({ key: 'log', color: '#FF3B30' }); // Red for log
+              }
            }
         }
       }
+
+      // Handle Today
+      if (!newMarked[todayStr]) newMarked[todayStr] = { dots: [] };
+      if (!newMarked[todayStr].dots.find(d => d.key === 'today')) {
+          newMarked[todayStr].dots.push({ key: 'today', color: '#007AFF' }); // Blue for today
+      }
+
       setMarkedDates(newMarked);
     } catch (e) {
       console.error("Failed to refresh marked dates", e);
@@ -123,6 +136,32 @@ export const WorkoutProvider = ({ children }) => {
       }
   };
 
+  const getSessionForDate = async (program, dateStr) => {
+      try {
+          const keys = await AsyncStorage.getAllKeys();
+          // Keys are @Log_Program_Session_Date
+          // We want to find Session where Program and Date match
+          const pattern = `@Log_${program}_`;
+          const suffix = `_${dateStr}`;
+
+          const matchingKey = keys.find(k => k.startsWith(pattern) && k.endsWith(suffix));
+          if (matchingKey) {
+              // Extract session. Format: @Log_Program_Session_Date
+              // But Session might contain underscores if we allow spaces -> usually spaces are preserved in keys if we just template string it?
+              // Wait, `addSession` uses spaces. Keys will be `@Log_Program 1_Push_2023-01-01`.
+              // Splitting by `_` might be ambiguous if program or session has `_`.
+              // Assuming standard names without `_`.
+              // Better extraction: remove prefix `@Log_${program}_` and suffix `_${dateStr}`.
+              const mid = matchingKey.substring(pattern.length, matchingKey.length - suffix.length);
+              return mid;
+          }
+          return null;
+      } catch (e) {
+          console.error("Failed to get session for date", e);
+          return null;
+      }
+  };
+
   const saveLog = async (program, session, date, blocks) => {
     try {
       const key = `@Log_${program}_${session}_${date}`;
@@ -132,21 +171,9 @@ export const WorkoutProvider = ({ children }) => {
       };
       await AsyncStorage.setItem(key, JSON.stringify(data));
 
-      if (blocks.length > 0) {
-          setMarkedDates(prev => ({
-              ...prev,
-              [date]: { marked: true, dotColor: '#007AFF' }
-          }));
-      } else {
-          setMarkedDates(prev => {
-              const next = { ...prev };
-              delete next[date];
-              return next;
-          });
-          if (blocks.length === 0) {
-              await AsyncStorage.removeItem(key);
-          }
-      }
+      // Refresh marked dates efficiently?
+      // For now calling full refresh is safer to sync everything.
+      refreshMarkedDates();
 
     } catch (e) {
       console.error("Failed to save log", e);
@@ -187,8 +214,60 @@ export const WorkoutProvider = ({ children }) => {
       setSessions(newSessions);
   };
 
-  const deleteSession = (name) => {
-      setSessions(sessions.filter(s => s !== name));
+  const deleteSession = async (name) => {
+      try {
+          // Remove from list
+          setSessions(prev => prev.filter(s => s !== name));
+
+          // Remove logs
+          const keys = await AsyncStorage.getAllKeys();
+          // Filter keys containing `_${name}_` ?
+          // Format: `@Log_${program}_${session}_${date}`.
+          // Careful with partial matches e.g. "Push" vs "Push 2".
+          // We should construct regex or careful split.
+
+          const toRemove = keys.filter(k => {
+              if (!k.startsWith('@Log_')) return false;
+              const parts = k.split('_');
+              // parts[0] = @Log
+              // parts[1] = Program
+              // parts[2]... might be session parts if session has underscores?
+              // parts[last] = Date
+              // If we assume no underscores in program/session names for now or just standard structure.
+              // To be safe, we can try to reconstruct.
+              // Actually, we know the structure.
+              // Let's iterate programs? No, keys are all we have.
+
+              // If we use `_` as separator, names shouldn't have `_`.
+              // If they do, this is fragile.
+              // But assuming default data:
+              // @Log_Program 1_Push_2023...
+              // Session is parts[2] if Program has no underscores.
+              // Let's do a substring check surrounded by `_`.
+              // `_${name}_`
+              // But Program could end with name, or Date could start with name? No.
+              // Safest: match `_${name}_` and verify position?
+              // Given constraints, strict parsing is hard without knowing program names list.
+              // But we can check if the key contains the session name segment.
+
+              // Better: we can assume session is the *middle* part?
+              // We have Program list.
+              // We can filter keys that start with `@Log_${program}_${name}_`.
+              // This is safer.
+              for (const prog of programs) {
+                  if (k.startsWith(`@Log_${prog}_${name}_`)) return true;
+              }
+              return false;
+          });
+
+          if (toRemove.length > 0) {
+              await AsyncStorage.multiRemove(toRemove);
+          }
+
+          refreshMarkedDates();
+      } catch (e) {
+          console.error("Failed to delete session logs", e);
+      }
   };
 
   return (
@@ -206,7 +285,8 @@ export const WorkoutProvider = ({ children }) => {
       isLoaded,
       getLog,
       saveLog,
-      getLastLog
+      getLastLog,
+      getSessionForDate
     }}>
       {children}
     </WorkoutContext.Provider>

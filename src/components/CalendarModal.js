@@ -55,14 +55,12 @@ export default function CalendarModal({ visible, onClose, onSelectDate }) {
           </HeaderRow>
 
           <Calendar
-            markingType={'dot'}
+            markingType={'multi-dot'}
             markedDates={marked}
             onDayPress={handleDayPress}
             theme={{
               arrowColor: '#007AFF',
               todayTextColor: '#007AFF',
-              dotColor: '#007AFF',
-              selectedDotColor: '#ffffff'
             }}
           />
         </Content>
