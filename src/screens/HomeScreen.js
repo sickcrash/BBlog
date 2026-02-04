@@ -19,7 +19,7 @@ export default function HomeScreen() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isProgramVisible, setProgramVisible] = useState(false);
-  const { currentProgram, getLog, saveLog, getLastLog, sessionMap, sessions } = useWorkout();
+  const { currentProgram, getLog, saveLog, getLastLog, sessionMap, sessions, setSessionForDate } = useWorkout();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blocks, setBlocks] = useState([]);
 
@@ -38,6 +38,16 @@ export default function HomeScreen() {
           setSelectedSession(null);
       }
   }, [dateStr, sessionMap]);
+
+  const handleSessionSelect = (session) => {
+    if (session === selectedSession) {
+        setSelectedSession(null);
+        setSessionForDate(dateStr, null);
+    } else {
+        setSelectedSession(session);
+        setSessionForDate(dateStr, session);
+    }
+  };
 
   useEffect(() => {
     const loadLogs = async () => {
@@ -79,20 +89,26 @@ export default function HomeScreen() {
     loadLogs();
   }, [currentProgram, selectedSession, dateStr]);
 
-  const handleUpdateBlocks = (newBlocks) => {
+  const handleUpdateBlocks = async (newBlocks) => {
     // If no session selected, try to select default (first session)
     let sessionToUse = selectedSession;
     if (!sessionToUse && newBlocks.length > 0) {
         // Auto-select first session if available
         if (sessions && sessions.length > 0) {
             sessionToUse = sessions[0];
-            setSelectedSession(sessionToUse);
+            // We do NOT set selectedSession here immediately to avoid race condition with loadLogs
         }
     }
 
     if (sessionToUse && currentProgram) {
         setBlocks(newBlocks);
-        saveLog(currentProgram, sessionToUse, dateStr, newBlocks);
+        // Await saveLog to ensure storage is updated before any potential re-load triggers
+        await saveLog(currentProgram, sessionToUse, dateStr, newBlocks);
+
+        if (sessionToUse !== selectedSession) {
+             setSelectedSession(sessionToUse);
+             setSessionForDate(dateStr, sessionToUse);
+        }
     }
   };
 
@@ -106,7 +122,7 @@ export default function HomeScreen() {
       />
       <SessionSelector
         selectedSession={selectedSession}
-        onSelect={setSelectedSession}
+        onSelect={handleSessionSelect}
       />
       <BlockList
         blocks={blocks}
@@ -116,6 +132,7 @@ export default function HomeScreen() {
         visible={isCalendarVisible}
         onClose={() => setCalendarVisible(false)}
         onSelectDate={handleDateSelect}
+        selectedDate={dateStr}
       />
       <ProgramModal
         visible={isProgramVisible}

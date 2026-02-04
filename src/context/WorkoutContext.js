@@ -225,14 +225,27 @@ export const WorkoutProvider = ({ children }) => {
           // Remove logs
           const keys = await AsyncStorage.getAllKeys();
           const toRemove = [];
-          for (const prog of programs) {
-             const prefix = `@Log_${prog}_${name}_`;
-             const matched = keys.filter(k => k.startsWith(prefix));
-             toRemove.push(...matched);
-          }
+          // Also remove logs regardless of program to be safe, or iterate all programs
+          // The key format is @Log_${program}_${session}_${date}
+          // We can just search for `_${name}_` in the key but that might be risky if name is substring of program.
+          // Better: Check splits.
+          // Or stick to program iteration if we trust programs list.
+          // Let's filter carefully.
 
-          if (toRemove.length > 0) {
-              await AsyncStorage.multiRemove(toRemove);
+          const relevantKeys = keys.filter(key => {
+              // Check if key contains the session name in the correct position
+              // Key: @Log_ProgramName_SessionName_Date
+              // It's safer to use the prefix strategy if we know the program.
+              // But what if program was deleted? (Likely logs cleaned then).
+              // We will stick to iterating current programs.
+              for (const prog of programs) {
+                  if (key.startsWith(`@Log_${prog}_${name}_`)) return true;
+              }
+              return false;
+          });
+
+          if (relevantKeys.length > 0) {
+              await AsyncStorage.multiRemove(relevantKeys);
           }
       } catch (e) {
           console.error("Failed to delete session logs", e);
@@ -252,6 +265,7 @@ export const WorkoutProvider = ({ children }) => {
       addSession,
       updateSession,
       deleteSession,
+      setSessionForDate,
       isLoaded,
       getLog,
       saveLog,

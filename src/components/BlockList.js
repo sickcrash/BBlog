@@ -83,7 +83,8 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
           activeOpacity={1}
           style={{
              opacity: isActive ? 0.7 : 1,
-             backgroundColor: isActive ? '#f0f0f0' : 'transparent'
+             backgroundColor: isActive ? '#f0f0f0' : 'transparent',
+             minHeight: 50
           }}
         >
           {item.type === 'exercise' ? (
@@ -117,7 +118,7 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
       <DraggableFlatList
         data={blocks}
         onDragEnd={({ data }) => onUpdateBlocks(data)}
-        keyExtractor={(item) => item.id || `block-${Math.random()}`}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
         ListFooterComponent={() => (
