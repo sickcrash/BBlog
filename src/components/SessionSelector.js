@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components/native';
 import { useWorkout } from '../context/WorkoutContext';
-import { Plus, X, Pencil } from 'lucide-react-native';
+import { Plus, X } from 'lucide-react-native';
 import { TextInput, Alert, TouchableOpacity } from 'react-native';
 
 const Container = styled.View`
@@ -53,10 +53,6 @@ const EditInput = styled.TextInput`
 
 const DeleteButton = styled.TouchableOpacity`
   margin-left: 8px;
-`;
-
-const EditIcon = styled.View`
-    margin-right: 4px;
 `;
 
 export default function SessionSelector({ selectedSession, onSelect }) {
@@ -133,11 +129,6 @@ export default function SessionSelector({ selectedSession, onSelect }) {
               </ChipContent>
             ) : (
               <ChipContent>
-                 {selectedSession === session && (
-                     <EditIcon>
-                         <Pencil size={12} color="white" />
-                     </EditIcon>
-                 )}
                  <ChipText selected={selectedSession === session}>{session}</ChipText>
               </ChipContent>
             )}

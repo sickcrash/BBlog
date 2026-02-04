@@ -59,7 +59,6 @@ export const WorkoutProvider = ({ children }) => {
       const keys = await AsyncStorage.getAllKeys();
       const logKeys = keys.filter(k => k.startsWith('@Log_'));
       const newMarked = {};
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
 
       // Process logs
       for (const key of logKeys) {
@@ -71,20 +70,12 @@ export const WorkoutProvider = ({ children }) => {
            const data = JSON.parse(dataStr);
            if (data.blocks && data.blocks.length > 0) {
               if (!newMarked[date]) newMarked[date] = { dots: [] };
-              // Avoid duplicate dots if multiple logs for same day
               if (!newMarked[date].dots.find(d => d.key === 'log')) {
                   newMarked[date].dots.push({ key: 'log', color: '#FF3B30' }); // Red for log
               }
            }
         }
       }
-
-      // Handle Today
-      if (!newMarked[todayStr]) newMarked[todayStr] = { dots: [] };
-      if (!newMarked[todayStr].dots.find(d => d.key === 'today')) {
-          newMarked[todayStr].dots.push({ key: 'today', color: '#007AFF' }); // Blue for today
-      }
-
       setMarkedDates(newMarked);
     } catch (e) {
       console.error("Failed to refresh marked dates", e);
@@ -140,18 +131,13 @@ export const WorkoutProvider = ({ children }) => {
       try {
           const keys = await AsyncStorage.getAllKeys();
           // Keys are @Log_Program_Session_Date
-          // We want to find Session where Program and Date match
           const pattern = `@Log_${program}_`;
           const suffix = `_${dateStr}`;
 
           const matchingKey = keys.find(k => k.startsWith(pattern) && k.endsWith(suffix));
           if (matchingKey) {
-              // Extract session. Format: @Log_Program_Session_Date
-              // But Session might contain underscores if we allow spaces -> usually spaces are preserved in keys if we just template string it?
-              // Wait, `addSession` uses spaces. Keys will be `@Log_Program 1_Push_2023-01-01`.
-              // Splitting by `_` might be ambiguous if program or session has `_`.
-              // Assuming standard names without `_`.
-              // Better extraction: remove prefix `@Log_${program}_` and suffix `_${dateStr}`.
+              // Extract session.
+              // Logic: key = pattern + SESSION + suffix
               const mid = matchingKey.substring(pattern.length, matchingKey.length - suffix.length);
               return mid;
           }
@@ -164,15 +150,41 @@ export const WorkoutProvider = ({ children }) => {
 
   const saveLog = async (program, session, date, blocks) => {
     try {
-      const key = `@Log_${program}_${session}_${date}`;
+      // 1-Day-1-Session Logic: Ensure no other session exists for this Program+Date
+      const allKeys = await AsyncStorage.getAllKeys();
+      const pattern = `@Log_${program}_`;
+      const suffix = `_${date}`;
+
+      const conflictingKeys = allKeys.filter(k =>
+          k.startsWith(pattern) && k.endsWith(suffix)
+      );
+
+      // We expect 0 or 1 matching key (if session is same).
+      // But if session is DIFFERENT, we must remove it.
+      // E.g. existing key: @Log_P1_Push_2023-01-01
+      // New save: @Log_P1_Pull_2023-01-01
+      // We remove the Push key.
+
+      const newKey = `@Log_${program}_${session}_${date}`;
+      const toDelete = conflictingKeys.filter(k => k !== newKey);
+
+      if (toDelete.length > 0) {
+          await AsyncStorage.multiRemove(toDelete);
+      }
+
       const data = {
         blocks,
         lastModified: Date.now()
       };
-      await AsyncStorage.setItem(key, JSON.stringify(data));
+      await AsyncStorage.setItem(newKey, JSON.stringify(data));
 
-      // Refresh marked dates efficiently?
-      // For now calling full refresh is safer to sync everything.
+      // Also, if blocks is empty, maybe we should delete the key too?
+      // "La funzione per aggiungere esercizi e note si è rotta" -> user might be saving empty list?
+      // Assuming blocks not empty usually.
+      if (blocks.length === 0) {
+           await AsyncStorage.removeItem(newKey);
+      }
+
       refreshMarkedDates();
 
     } catch (e) {
@@ -217,48 +229,25 @@ export const WorkoutProvider = ({ children }) => {
   const deleteSession = async (name) => {
       try {
           // Remove from list
-          setSessions(prev => prev.filter(s => s !== name));
+          const newSessions = sessions.filter(s => s !== name);
+          setSessions(newSessions);
+
+          // Force save sessions immediately (though useEffect handles it if sessions changes)
+          // But cleaning storage needs to happen.
 
           // Remove logs
           const keys = await AsyncStorage.getAllKeys();
-          // Filter keys containing `_${name}_` ?
-          // Format: `@Log_${program}_${session}_${date}`.
-          // Careful with partial matches e.g. "Push" vs "Push 2".
-          // We should construct regex or careful split.
 
-          const toRemove = keys.filter(k => {
-              if (!k.startsWith('@Log_')) return false;
-              const parts = k.split('_');
-              // parts[0] = @Log
-              // parts[1] = Program
-              // parts[2]... might be session parts if session has underscores?
-              // parts[last] = Date
-              // If we assume no underscores in program/session names for now or just standard structure.
-              // To be safe, we can try to reconstruct.
-              // Actually, we know the structure.
-              // Let's iterate programs? No, keys are all we have.
-
-              // If we use `_` as separator, names shouldn't have `_`.
-              // If they do, this is fragile.
-              // But assuming default data:
-              // @Log_Program 1_Push_2023...
-              // Session is parts[2] if Program has no underscores.
-              // Let's do a substring check surrounded by `_`.
-              // `_${name}_`
-              // But Program could end with name, or Date could start with name? No.
-              // Safest: match `_${name}_` and verify position?
-              // Given constraints, strict parsing is hard without knowing program names list.
-              // But we can check if the key contains the session name segment.
-
-              // Better: we can assume session is the *middle* part?
-              // We have Program list.
-              // We can filter keys that start with `@Log_${program}_${name}_`.
-              // This is safer.
-              for (const prog of programs) {
-                  if (k.startsWith(`@Log_${prog}_${name}_`)) return true;
-              }
-              return false;
-          });
+          // Filter keys that match the session name segment.
+          // Using loop over programs to be precise.
+          const toRemove = [];
+          for (const prog of programs) {
+             const prefix = `@Log_${prog}_${name}_`;
+             // This prefix handles keys starting with it.
+             // We need to match keys that START with this.
+             const matched = keys.filter(k => k.startsWith(prefix));
+             toRemove.push(...matched);
+          }
 
           if (toRemove.length > 0) {
               await AsyncStorage.multiRemove(toRemove);

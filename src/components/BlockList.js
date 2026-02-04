@@ -1,10 +1,11 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
 import { Plus, Trash2 } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -13,7 +14,8 @@ const AddButtonContainer = styled.View`
   gap: 16px;
 `;
 
-const AddButton = styled.TouchableOpacity`
+// Use RNTouchableOpacity for static buttons to ensure they work reliably
+const AddButton = styled(RNTouchableOpacity)`
   background-color: ${props => props.theme.colors.highlight};
   padding: 10px 20px;
   border-radius: 20px;
@@ -27,7 +29,7 @@ const AddButtonText = styled.Text`
   margin-left: 8px;
 `;
 
-const ClearButton = styled.TouchableOpacity`
+const ClearButton = styled(RNTouchableOpacity)`
   margin-top: 16px;
   margin-bottom: 32px;
   align-self: center;
@@ -72,9 +74,10 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
   const renderItem = ({ item, drag, isActive, index }) => {
     if (index === undefined) return null;
 
+    // Use GHTouchableOpacity for draggable items
     return (
       <ScaleDecorator>
-        <TouchableOpacity
+        <GHTouchableOpacity
           onLongPress={drag}
           disabled={isActive}
           activeOpacity={1}
@@ -100,7 +103,7 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
                onDelete={() => handleDeleteBlock(index)}
              />
           )}
-        </TouchableOpacity>
+        </GHTouchableOpacity>
       </ScaleDecorator>
     );
   };

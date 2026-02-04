@@ -41,7 +41,30 @@ export default function CalendarModal({ visible, onClose, onSelectDate }) {
     }
   };
 
-  const marked = { ...markedDates };
+  // markedDates from context is multi-dot. We need to convert or simplify if we want iOS style selection.
+  // But context returns `{ 'date': { dots: [...] } }`.
+  // User asked to remove blue dots.
+  // "Elimina i pallini blu."
+  // "Usa lo stile iOS originale. Il giorno selezionato deve avere un cerchio pieno..."
+  // I should strip out the 'today' blue dot from the context data, or just ignore dots if I want clean?
+  // But "Red dot: Indica le giornate in cui è presente almeno un log salvato."
+  // So I should keep Red, remove Blue.
+  // And use `markingType` to `multi-dot` or `dot`.
+  // If I use `markingType={'dot'}`, I can pass `dots: [Array]`? No, standard `dot` supports `marked: true, dotColor`.
+  // `multi-dot` supports `dots: []`.
+  // If I want to support Red dots, I should filter the `markedDates` from context.
+
+  const processedMarkedDates = {};
+  Object.keys(markedDates).forEach(date => {
+      const data = markedDates[date];
+      if (data.dots) {
+          // Filter out blue dots (key 'today')
+          const filteredDots = data.dots.filter(d => d.key !== 'today');
+          if (filteredDots.length > 0) {
+              processedMarkedDates[date] = { dots: filteredDots };
+          }
+      }
+  });
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -56,11 +79,13 @@ export default function CalendarModal({ visible, onClose, onSelectDate }) {
 
           <Calendar
             markingType={'multi-dot'}
-            markedDates={marked}
+            markedDates={processedMarkedDates}
             onDayPress={handleDayPress}
             theme={{
               arrowColor: '#007AFF',
               todayTextColor: '#007AFF',
+              selectedDayBackgroundColor: '#007AFF',
+              selectedDayTextColor: '#ffffff',
             }}
           />
         </Content>
