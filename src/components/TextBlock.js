@@ -6,6 +6,9 @@ const Container = styled.View`
   padding: 8px 16px;
   margin-bottom: 8px;
   position: relative;
+  min-height: 40px;
+  background-color: ${props => props.theme.colors.background};
+  width: 90%;
 `;
 
 const Input = styled.TextInput`

@@ -8,6 +8,9 @@ const Container = styled.View`
   border-left-width: 2px;
   border-left-color: ${props => props.theme.colors.primary};
   position: relative;
+  min-height: 60px;
+  background-color: ${props => props.theme.colors.background};
+  width: 90%;
 `;
 
 const TitleInput = styled.TextInput`
