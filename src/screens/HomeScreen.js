@@ -39,13 +39,13 @@ export default function HomeScreen() {
       }
   }, [dateStr, sessionMap]);
 
-  const handleSessionSelect = (session) => {
-    if (session === selectedSession) {
+  const handleSessionSelect = (sessionId) => {
+    if (sessionId === selectedSession) {
         setSelectedSession(null);
         setSessionForDate(dateStr, null);
     } else {
-        setSelectedSession(session);
-        setSessionForDate(dateStr, session);
+        setSelectedSession(sessionId);
+        setSessionForDate(dateStr, sessionId);
     }
   };
 
@@ -91,23 +91,22 @@ export default function HomeScreen() {
 
   const handleUpdateBlocks = async (newBlocks) => {
     // If no session selected, try to select default (first session)
-    let sessionToUse = selectedSession;
-    if (!sessionToUse && newBlocks.length > 0) {
+    let sessionToUseId = selectedSession;
+    if (!sessionToUseId && newBlocks.length > 0) {
         // Auto-select first session if available
         if (sessions && sessions.length > 0) {
-            sessionToUse = sessions[0];
-            // We do NOT set selectedSession here immediately to avoid race condition with loadLogs
+            sessionToUseId = sessions[0].id;
         }
     }
 
-    if (sessionToUse && currentProgram) {
+    if (sessionToUseId && currentProgram) {
         setBlocks(newBlocks);
         // Await saveLog to ensure storage is updated before any potential re-load triggers
-        await saveLog(currentProgram, sessionToUse, dateStr, newBlocks);
+        await saveLog(currentProgram, sessionToUseId, dateStr, newBlocks);
 
-        if (sessionToUse !== selectedSession) {
-             setSelectedSession(sessionToUse);
-             setSessionForDate(dateStr, sessionToUse);
+        if (sessionToUseId !== selectedSession) {
+             setSelectedSession(sessionToUseId);
+             setSessionForDate(dateStr, sessionToUseId);
         }
     }
   };

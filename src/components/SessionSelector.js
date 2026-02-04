@@ -75,23 +75,21 @@ export default function SessionSelector({ selectedSession, onSelect }) {
   const [editValue, setEditValue] = useState('');
 
   const handlePress = (session) => {
-    if (selectedSession === session) {
+    if (selectedSession === session.id) {
       // Already selected, enter edit mode
       setEditingSession(session);
-      setEditValue(session);
+      setEditValue(session.name);
     } else {
       // Select it
-      onSelect(session);
+      onSelect(session.id);
       setEditingSession(null);
     }
   };
 
   const handleSubmit = () => {
     if (editingSession && editValue.trim()) {
-      updateSession(editingSession, editValue.trim());
-      if (selectedSession === editingSession) {
-          onSelect(editValue.trim());
-      }
+      updateSession(editingSession.id, editValue.trim());
+      // No need to call onSelect, ID hasn't changed
     }
     setEditingSession(null);
   };
@@ -99,16 +97,16 @@ export default function SessionSelector({ selectedSession, onSelect }) {
   const handleDelete = (session) => {
       Alert.alert(
           "Delete Session",
-          `Are you sure you want to delete "${session}"?`,
+          `Are you sure you want to delete "${session.name}"?`,
           [
               { text: "Cancel", style: "cancel" },
               {
                   text: "Delete",
                   style: "destructive",
                   onPress: () => {
-                      deleteSession(session);
+                      deleteSession(session.id);
                       setEditingSession(null);
-                      if (selectedSession === session) {
+                      if (selectedSession === session.id) {
                           onSelect(null);
                       }
                   }
@@ -122,10 +120,10 @@ export default function SessionSelector({ selectedSession, onSelect }) {
       <Scroll horizontal showsHorizontalScrollIndicator={false}>
         {sessions.map((session) => (
           <Chip
-            key={session}
-            selected={selectedSession === session}
+            key={session.id}
+            selected={selectedSession === session.id}
           >
-            {editingSession === session ? (
+            {editingSession?.id === session.id ? (
               <EditContainer>
                 <EditInput
                   value={editValue}
@@ -145,7 +143,7 @@ export default function SessionSelector({ selectedSession, onSelect }) {
             ) : (
               <ChipTouchable onPress={() => handlePress(session)}>
                  <ChipContent>
-                    <ChipText selected={selectedSession === session}>{session}</ChipText>
+                    <ChipText selected={selectedSession === session.id}>{session.name}</ChipText>
                  </ChipContent>
               </ChipTouchable>
             )}

@@ -1,9 +1,10 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity, FlatList } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
 import { Plus, Trash2 } from 'lucide-react-native';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -70,33 +71,40 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
     onUpdateBlocks([]);
   };
 
-  const renderItem = ({ item, index }) => {
+  const renderItem = ({ item, drag, isActive, index }) => {
     return (
-        <View
-          style={{
-             minHeight: 50,
-             width: '100%',
-             marginBottom: 8
-          }}
-        >
-          {item.type === 'exercise' ? (
-             <ExerciseBlock
-               title={item.title}
-               content={item.content}
-               placeholder={item.placeholder}
-               onTitleChange={(text) => handleUpdateBlock(index, { ...item, title: text })}
-               onContentChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
-               onDelete={() => handleDeleteBlock(index)}
-             />
-          ) : (
-             <TextBlock
-               content={item.content}
-               placeholder={item.placeholder}
-               onChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
-               onDelete={() => handleDeleteBlock(index)}
-             />
-          )}
-        </View>
+        <ScaleDecorator>
+            <TouchableOpacity
+              onLongPress={drag}
+              disabled={isActive}
+              activeOpacity={1}
+              style={{
+                 opacity: isActive ? 0.7 : 1,
+                 backgroundColor: isActive ? '#f0f0f0' : 'transparent',
+                 minHeight: 50,
+                 width: '100%',
+                 marginBottom: 8
+              }}
+            >
+              {item.type === 'exercise' ? (
+                 <ExerciseBlock
+                   title={item.title}
+                   content={item.content}
+                   placeholder={item.placeholder}
+                   onTitleChange={(text) => handleUpdateBlock(index, { ...item, title: text })}
+                   onContentChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+                   onDelete={() => handleDeleteBlock(index)}
+                 />
+              ) : (
+                 <TextBlock
+                   content={item.content}
+                   placeholder={item.placeholder}
+                   onChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+                   onDelete={() => handleDeleteBlock(index)}
+                 />
+              )}
+            </TouchableOpacity>
+        </ScaleDecorator>
     );
   };
 
@@ -106,9 +114,10 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
       style={{ flex: 1 }}
       keyboardVerticalOffset={Platform.OS === "ios" ? 44 : 0}
     >
-      <FlatList
+      <DraggableFlatList
         data={blocks}
         extraData={blocks}
+        onDragEnd={({ data }) => onUpdateBlocks(data)}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
