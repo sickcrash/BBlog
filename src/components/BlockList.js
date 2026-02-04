@@ -1,5 +1,5 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
@@ -104,12 +104,6 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
       </ScaleDecorator>
     );
   };
-
-  // We need TouchableOpacity from react-native, but it conflicts with styled-components if not careful?
-  // Actually we need `import { TouchableOpacity } from 'react-native'` explicitly if we use it inside.
-  // Oh, wait, I didn't import TouchableOpacity.
-
-  const { TouchableOpacity } = require('react-native');
 
   return (
     <KeyboardAvoidingView
