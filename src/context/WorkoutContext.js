@@ -61,16 +61,8 @@ export const WorkoutProvider = ({ children }) => {
       const newMarked = {};
 
       for (const key of logKeys) {
-        // Key format: @Log_Program_Session_YYYY-MM-DD
         const parts = key.split('_');
         const date = parts[parts.length - 1];
-
-        // Basic check to confirm content exists? We could read all, but that's expensive.
-        // Assuming if a key exists, it has content.
-        // For better accuracy we could read:
-        // const data = await AsyncStorage.getItem(key);
-        // if (JSON.parse(data).blocks.length > 0) ...
-        // Let's do a quick read since we need to verify "at least one block".
 
         const dataStr = await AsyncStorage.getItem(key);
         if (dataStr) {
@@ -108,10 +100,6 @@ export const WorkoutProvider = ({ children }) => {
 
           const relevantKeys = keys.filter(k => k.startsWith(prefix));
 
-          // Sort keys by date descending, but filter out current date or future
-          // Key format: @Log_Program_Session_YYYY-MM-DD
-          // We can extract the date part.
-
           const pastLogs = relevantKeys
               .map(k => {
                   const parts = k.split('_');
@@ -119,7 +107,7 @@ export const WorkoutProvider = ({ children }) => {
                   return { key: k, date };
               })
               .filter(item => item.date < currentDateStr)
-              .sort((a, b) => b.date.localeCompare(a.date)); // Descending string sort works for YYYY-MM-DD
+              .sort((a, b) => b.date.localeCompare(a.date));
 
           if (pastLogs.length > 0) {
               const stored = await AsyncStorage.getItem(pastLogs[0].key);
@@ -144,21 +132,17 @@ export const WorkoutProvider = ({ children }) => {
       };
       await AsyncStorage.setItem(key, JSON.stringify(data));
 
-      // Update marked dates efficiently
       if (blocks.length > 0) {
           setMarkedDates(prev => ({
               ...prev,
               [date]: { marked: true, dotColor: '#007AFF' }
           }));
       } else {
-          // If empty, removing the dot might be correct, but technically the file still exists?
-          // If we want to remove dot if empty:
           setMarkedDates(prev => {
               const next = { ...prev };
               delete next[date];
               return next;
           });
-          // Also optionally delete the key from storage to keep it clean
           if (blocks.length === 0) {
               await AsyncStorage.removeItem(key);
           }
@@ -177,21 +161,15 @@ export const WorkoutProvider = ({ children }) => {
   };
 
   const updateProgram = (oldName, newName) => {
-      if (programs.includes(newName)) return; // prevent duplicates
+      if (programs.includes(newName)) return;
       const newPrograms = programs.map(p => p === oldName ? newName : p);
       setPrograms(newPrograms);
       if (currentProgram === oldName) {
           setCurrentProgram(newName);
       }
-      // Note: This doesn't migrate existing logs.
-      // In a real app we'd migrate keys. For this task I will leave as is unless asked.
-      // "Rinomina: Se l'utente tocca una sessione... Rendi l'elenco... dinamico".
-      // The user didn't explicitly ask for data migration but it's good practice.
-      // Given constraints, I'll stick to just renaming the list item for now.
   };
 
   const addSession = (name) => {
-      // Find a unique name
       let uniqueName = name;
       let counter = 1;
       while (sessions.includes(uniqueName)) {
@@ -209,6 +187,10 @@ export const WorkoutProvider = ({ children }) => {
       setSessions(newSessions);
   };
 
+  const deleteSession = (name) => {
+      setSessions(sessions.filter(s => s !== name));
+  };
+
   return (
     <WorkoutContext.Provider value={{
       programs,
@@ -220,6 +202,7 @@ export const WorkoutProvider = ({ children }) => {
       updateProgram,
       addSession,
       updateSession,
+      deleteSession,
       isLoaded,
       getLog,
       saveLog,

@@ -32,40 +32,16 @@ const Title = styled.Text`
   font-weight: bold;
 `;
 
-const Button = styled.TouchableOpacity`
-  background-color: ${props => props.theme.colors.primary};
-  padding: 10px 16px;
-  border-radius: 8px;
-`;
-
-const ButtonText = styled.Text`
-  color: white;
-  font-weight: 600;
-`;
-
 export default function CalendarModal({ visible, onClose, onSelectDate }) {
   const { markedDates } = useWorkout();
-  const [selectedDate, setSelectedDate] = useState('');
 
   const handleDayPress = (day) => {
-    setSelectedDate(day.dateString);
-  };
-
-  const handleGoToDate = () => {
-    if (selectedDate && onSelectDate) {
-      onSelectDate(selectedDate);
+    if (onSelectDate) {
+      onSelectDate(day.dateString);
     }
   };
 
   const marked = { ...markedDates };
-
-  if (selectedDate) {
-    marked[selectedDate] = {
-      ...(marked[selectedDate] || {}),
-      selected: true,
-      selectedColor: '#FF9500'
-    };
-  }
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -89,15 +65,6 @@ export default function CalendarModal({ visible, onClose, onSelectDate }) {
               selectedDotColor: '#ffffff'
             }}
           />
-
-          {selectedDate ? (
-            <Button
-              onPress={handleGoToDate}
-              style={{marginTop: 12, backgroundColor: '#E5E5EA', width: '100%', alignItems: 'center'}}
-            >
-              <ButtonText style={{color: '#007AFF'}}>Go to Selected Date</ButtonText>
-            </Button>
-          ) : null}
         </Content>
       </ModalContainer>
     </Modal>

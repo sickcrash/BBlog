@@ -22,7 +22,7 @@ const DeleteButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-export default function TextBlock({ content, onChange, onFocus, onDelete }) {
+export default function TextBlock({ content, onChange, onFocus, onDelete, placeholder }) {
   return (
     <Container>
       {onDelete && (
@@ -34,7 +34,7 @@ export default function TextBlock({ content, onChange, onFocus, onDelete }) {
         multiline
         value={content}
         onChangeText={onChange}
-        placeholder="Write a note..."
+        placeholder={placeholder || "Write a note..."}
         placeholderTextColor="#999"
         scrollEnabled={false}
         onFocus={onFocus}

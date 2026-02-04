@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components/native';
 import { useWorkout } from '../context/WorkoutContext';
-import { Plus } from 'lucide-react-native';
-import { TextInput } from 'react-native';
+import { Plus, X } from 'lucide-react-native';
+import { TextInput, Alert, TouchableOpacity } from 'react-native';
 
 const Container = styled.View`
   padding-bottom: 8px;
@@ -22,6 +22,11 @@ const Chip = styled.TouchableOpacity`
   min-width: 60px;
   align-items: center;
   justify-content: center;
+`;
+
+const ChipContent = styled.View`
+  flex-direction: row;
+  align-items: center;
 `;
 
 const ChipText = styled.Text`
@@ -46,8 +51,12 @@ const EditInput = styled.TextInput`
   min-width: 50px;
 `;
 
+const DeleteButton = styled.TouchableOpacity`
+  margin-left: 8px;
+`;
+
 export default function SessionSelector({ selectedSession, onSelect }) {
-  const { sessions, addSession, updateSession } = useWorkout();
+  const { sessions, addSession, updateSession, deleteSession } = useWorkout();
   const [editingSession, setEditingSession] = useState(null);
   const [editValue, setEditValue] = useState('');
 
@@ -66,17 +75,33 @@ export default function SessionSelector({ selectedSession, onSelect }) {
   const handleSubmit = () => {
     if (editingSession && editValue.trim()) {
       updateSession(editingSession, editValue.trim());
-      // If we renamed the currently selected session, we might need to tell HomeScreen the new name?
-      // But selectedSession prop is passed from parent.
-      // Parent needs to know the new name if it relies on string matching.
-      // The updateSession updates the list. The parent (HomeScreen) will re-render.
-      // However, if HomeScreen holds `selectedSession` as a string, and that string is no longer in `sessions`,
-      // we need to ensure HomeScreen updates its state.
-      // Actually, standard react pattern: if I rename 'Push' to 'Push 2', 'selectedSession' in HomeScreen is still 'Push'.
-      // So I should probably trigger onSelect with the new name.
-      onSelect(editValue.trim());
+      // Re-select if it was active
+      if (selectedSession === editingSession) {
+          onSelect(editValue.trim());
+      }
     }
     setEditingSession(null);
+  };
+
+  const handleDelete = (session) => {
+      Alert.alert(
+          "Delete Session",
+          `Are you sure you want to delete "${session}"?`,
+          [
+              { text: "Cancel", style: "cancel" },
+              {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => {
+                      deleteSession(session);
+                      setEditingSession(null);
+                      if (selectedSession === session) {
+                          onSelect(null);
+                      }
+                  }
+              }
+          ]
+      );
   };
 
   return (
@@ -90,14 +115,19 @@ export default function SessionSelector({ selectedSession, onSelect }) {
             activeOpacity={0.7}
           >
             {editingSession === session ? (
-              <EditInput
-                value={editValue}
-                onChangeText={setEditValue}
-                onBlur={handleSubmit}
-                onSubmitEditing={handleSubmit}
-                autoFocus
-                returnKeyType="done"
-              />
+              <ChipContent>
+                <EditInput
+                  value={editValue}
+                  onChangeText={setEditValue}
+                  onBlur={handleSubmit}
+                  onSubmitEditing={handleSubmit}
+                  autoFocus
+                  returnKeyType="done"
+                />
+                <DeleteButton onPress={() => handleDelete(session)}>
+                    <X size={16} color="white" />
+                </DeleteButton>
+              </ChipContent>
             ) : (
               <ChipText selected={selectedSession === session}>{session}</ChipText>
             )}

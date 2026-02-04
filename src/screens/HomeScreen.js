@@ -47,10 +47,13 @@ export default function HomeScreen() {
                            content: '', // Clear content
                            placeholder: `Last: ${block.content || '...'}`
                        };
+                   } else if (block.type === 'text') {
+                       return {
+                           ...block,
+                           content: '',
+                           placeholder: block.content ? `Last note: ${block.content}` : 'Write a note...'
+                       }
                    }
-                   // For text blocks, maybe we don't copy? Or copy as empty?
-                   // User said "list of exercises". Text blocks usually contextual.
-                   // Let's copy them but empty.
                    return { ...block, content: '' };
                 });
                 setBlocks(inheritedBlocks);
