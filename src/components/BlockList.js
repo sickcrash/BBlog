@@ -1,10 +1,9 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity, FlatList } from 'react-native';
 import styled from 'styled-components/native';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
 import { Plus, Trash2 } from 'lucide-react-native';
-import DraggableFlatList from 'react-native-draggable-flatlist';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -71,17 +70,10 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
     onUpdateBlocks([]);
   };
 
-  const renderItem = ({ item, drag, isActive, index }) => {
-    if (index === undefined) return null;
-
+  const renderItem = ({ item, index }) => {
     return (
-        <TouchableOpacity
-          onLongPress={drag}
-          disabled={isActive}
-          activeOpacity={1}
+        <View
           style={{
-             opacity: isActive ? 0.7 : 1,
-             backgroundColor: isActive ? '#f0f0f0' : 'transparent',
              minHeight: 50,
              width: '100%',
              marginBottom: 8
@@ -104,7 +96,7 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
                onDelete={() => handleDeleteBlock(index)}
              />
           )}
-        </TouchableOpacity>
+        </View>
     );
   };
 
@@ -114,10 +106,9 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
       style={{ flex: 1 }}
       keyboardVerticalOffset={100}
     >
-      <DraggableFlatList
+      <FlatList
         data={blocks}
         extraData={blocks}
-        onDragEnd={({ data }) => onUpdateBlocks(data)}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}

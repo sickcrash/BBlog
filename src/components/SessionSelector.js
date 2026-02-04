@@ -14,14 +14,26 @@ const Scroll = styled.ScrollView`
   padding-left: 16px;
 `;
 
-const Chip = styled.TouchableOpacity`
+const Chip = styled.View`
   background-color: ${props => props.selected ? props.theme.colors.primary : props.theme.colors.highlight};
-  padding: 8px 16px;
   border-radius: 16px;
   margin-right: 8px;
   min-width: 60px;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+`;
+
+const ChipTouchable = styled.TouchableOpacity`
+  padding: 8px 16px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const EditContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 16px;
 `;
 
 const ChipContent = styled.View`
@@ -112,11 +124,9 @@ export default function SessionSelector({ selectedSession, onSelect }) {
           <Chip
             key={session}
             selected={selectedSession === session}
-            onPress={() => handlePress(session)}
-            activeOpacity={0.7}
           >
             {editingSession === session ? (
-              <ChipContent>
+              <EditContainer>
                 <EditInput
                   value={editValue}
                   onChangeText={setEditValue}
@@ -131,11 +141,13 @@ export default function SessionSelector({ selectedSession, onSelect }) {
                 >
                     <X size={16} color="white" />
                 </DeleteButton>
-              </ChipContent>
+              </EditContainer>
             ) : (
-              <ChipContent>
-                 <ChipText selected={selectedSession === session}>{session}</ChipText>
-              </ChipContent>
+              <ChipTouchable onPress={() => handlePress(session)}>
+                 <ChipContent>
+                    <ChipText selected={selectedSession === session}>{session}</ChipText>
+                 </ChipContent>
+              </ChipTouchable>
             )}
           </Chip>
         ))}
