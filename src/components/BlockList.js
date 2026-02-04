@@ -104,7 +104,7 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 44 : 0}
     >
       <FlatList
         data={blocks}

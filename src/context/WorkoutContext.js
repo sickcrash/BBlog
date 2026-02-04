@@ -209,7 +209,7 @@ export const WorkoutProvider = ({ children }) => {
       try {
           // Remove from list
           const newSessions = sessions.filter(s => s !== name);
-          setSessions(newSessions);
+          setSessions([...newSessions]);
 
           // Remove from map
           setSessionMap(prev => {
