@@ -91,15 +91,14 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
                    title={item.title}
                    content={item.content}
                    placeholder={item.placeholder}
-                   onTitleChange={(text) => handleUpdateBlock(index, { ...item, title: text })}
-                   onContentChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+                   onUpdate={(updates) => handleUpdateBlock(index, { ...item, ...updates })}
                    onDelete={() => handleDeleteBlock(index)}
                  />
               ) : (
                  <TextBlock
                    content={item.content}
                    placeholder={item.placeholder}
-                   onChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
+                   onUpdate={(content) => handleUpdateBlock(index, { ...item, content })}
                    onDelete={() => handleDeleteBlock(index)}
                  />
               )}

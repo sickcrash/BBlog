@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components/native';
 import { X } from 'lucide-react-native';
 
@@ -25,7 +25,19 @@ const DeleteButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-export default function TextBlock({ content, onChange, onFocus, onDelete, placeholder }) {
+export default function TextBlock({ content, onUpdate, onFocus, onDelete, placeholder }) {
+  const [localContent, setLocalContent] = useState(content);
+
+  useEffect(() => {
+    setLocalContent(content);
+  }, [content]);
+
+  const handleBlur = () => {
+    if (localContent !== content) {
+      onUpdate(localContent);
+    }
+  };
+
   return (
     <Container>
       {onDelete && (
@@ -35,8 +47,9 @@ export default function TextBlock({ content, onChange, onFocus, onDelete, placeh
       )}
       <Input
         multiline
-        value={content}
-        onChangeText={onChange}
+        value={localContent}
+        onChangeText={setLocalContent}
+        onBlur={handleBlur}
         placeholder={placeholder || "Write a note..."}
         placeholderTextColor="#999"
         scrollEnabled={false}

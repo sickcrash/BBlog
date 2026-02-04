@@ -275,7 +275,7 @@ export const WorkoutProvider = ({ children }) => {
              { id: 's8', name: 'Rest' }
           ]);
           setSessionMap({});
-          setBlocks([]);
+          // setBlocks([]); // State is in HomeScreen, not here. Context reset handles data source.
 
           try {
               await Updates.reloadAsync();

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components/native';
 import { X } from 'lucide-react-native';
 
@@ -35,7 +35,35 @@ const DeleteButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-export default function ExerciseBlock({ title, content, onTitleChange, onContentChange, onFocus, onDelete, placeholder }) {
+export default function ExerciseBlock({ title, content, onUpdate, onFocus, onDelete, placeholder }) {
+  const [localTitle, setLocalTitle] = useState(title);
+  const [localContent, setLocalContent] = useState(content);
+
+  // Sync with props if they change externally (e.g. initial load or drag swap)
+  // We use a ref to prevent sync if we are the ones editing.
+  // Actually, simplest is to sync only when prop is different and we are NOT focused?
+  // But we might be swapped while focused.
+  // Standard pattern: Sync on prop change.
+  useEffect(() => {
+    setLocalTitle(title);
+  }, [title]);
+
+  useEffect(() => {
+    setLocalContent(content);
+  }, [content]);
+
+  const handleTitleBlur = () => {
+    if (localTitle !== title) {
+      onUpdate({ title: localTitle });
+    }
+  };
+
+  const handleContentBlur = () => {
+    if (localContent !== content) {
+      onUpdate({ content: localContent });
+    }
+  };
+
   return (
     <Container>
       {onDelete && (
@@ -44,16 +72,18 @@ export default function ExerciseBlock({ title, content, onTitleChange, onContent
         </DeleteButton>
       )}
       <TitleInput
-        value={title}
-        onChangeText={onTitleChange}
+        value={localTitle}
+        onChangeText={setLocalTitle}
+        onBlur={handleTitleBlur}
         placeholder="Exercise Name"
         placeholderTextColor="#999"
         onFocus={onFocus}
       />
       <ContentInput
         multiline
-        value={content}
-        onChangeText={onContentChange}
+        value={localContent}
+        onChangeText={setLocalContent}
+        onBlur={handleContentBlur}
         placeholder={placeholder || "Sets x Reps @ Weight..."}
         placeholderTextColor="#999"
         scrollEnabled={false}
