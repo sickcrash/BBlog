@@ -6,22 +6,15 @@ import * as Updates from 'expo-updates';
 const WorkoutContext = createContext();
 
 export const WorkoutProvider = ({ children }) => {
-  // Data Structure: [{ id: 'uuid', name: 'Name' }]
-  const [programs, setPrograms] = useState([{ id: 'default_prog', name: 'Program 1' }]);
-  const [currentProgram, setCurrentProgram] = useState('default_prog'); // ID
-  const [sessions, setSessions] = useState([
-      { id: 's1', name: 'Push' },
-      { id: 's2', name: 'Pull' },
-      { id: 's3', name: 'Legs' },
-      { id: 's4', name: 'Upper' },
-      { id: 's5', name: 'Lower' },
-      { id: 's6', name: 'Full Body' },
-      { id: 's7', name: 'Cardio' },
-      { id: 's8', name: 'Rest' }
-  ]);
-  const [calendarRanges, setCalendarRanges] = useState([]);
+  // Data Structure:
+  // programs: [ { id, name, sessions: [ { id, name } ] } ]
+  // currentProgram: id
+  // sessionMap: { dateString: { programId, sessionId } }
+
+  const [programs, setPrograms] = useState([]);
+  const [currentProgram, setCurrentProgram] = useState(null);
   const [markedDates, setMarkedDates] = useState({});
-  const [sessionMap, setSessionMap] = useState({}); // { 'yyyy-MM-dd': 'sessionId' }
+  const [sessionMap, setSessionMap] = useState({});
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -32,29 +25,33 @@ export const WorkoutProvider = ({ children }) => {
     if (isLoaded) {
       saveData();
     }
-  }, [programs, currentProgram, calendarRanges, sessions, sessionMap, isLoaded]);
+  }, [programs, currentProgram, sessionMap, isLoaded]);
 
   const loadData = async () => {
     try {
-      const storedData = await AsyncStorage.getItem('gymnotes_data_v2');
+      if (__DEV__) {
+          // Dev Wipe as requested
+          console.log("DEV MODE: Clearing AsyncStorage...");
+          await AsyncStorage.clear();
+      }
+
+      const storedData = await AsyncStorage.getItem('gymnotes_data_v3');
       if (storedData) {
         const parsed = JSON.parse(storedData);
-        setPrograms(parsed.programs || [{ id: 'default_prog', name: 'Program 1' }]);
-        setCurrentProgram(parsed.currentProgram || 'default_prog');
-        setSessions(parsed.sessions || [
-             { id: 's1', name: 'Push' },
-             { id: 's2', name: 'Pull' },
-             { id: 's3', name: 'Legs' },
-             { id: 's4', name: 'Upper' },
-             { id: 's5', name: 'Lower' },
-             { id: 's6', name: 'Full Body' },
-             { id: 's7', name: 'Cardio' },
-             { id: 's8', name: 'Rest' }
-        ]);
-        setCalendarRanges(parsed.calendarRanges || []);
+        setPrograms(parsed.programs || []);
+        setCurrentProgram(parsed.currentProgram || null);
         setSessionMap(parsed.sessionMap || {});
       } else {
-         // Check legacy? Assuming reset/fresh start for v2 as per "Reset" feature focus.
+        // Initialize default data if empty (or after wipe)
+        const defaultProgId = 'prog_' + Date.now();
+        const defaultSessions = [
+             { id: 'sess_' + Date.now() + '_1', name: 'Push' },
+             { id: 'sess_' + Date.now() + '_2', name: 'Pull' },
+             { id: 'sess_' + Date.now() + '_3', name: 'Legs' }
+        ];
+        const defaultProg = { id: defaultProgId, name: 'Program 1', sessions: defaultSessions };
+        setPrograms([defaultProg]);
+        setCurrentProgram(defaultProgId);
       }
       await refreshMarkedDates();
     } catch (e) {
@@ -69,21 +66,19 @@ export const WorkoutProvider = ({ children }) => {
       const data = {
         programs,
         currentProgram,
-        sessions,
-        calendarRanges,
         sessionMap
       };
-      await AsyncStorage.setItem('gymnotes_data_v2', JSON.stringify(data));
+      await AsyncStorage.setItem('gymnotes_data_v3', JSON.stringify(data));
     } catch (e) {
       console.error("Failed to save data", e);
     }
   };
 
-  const setSessionForDate = (date, sessionId) => {
+  const setSessionForDate = (date, programId, sessionId) => {
       setSessionMap(prev => {
           const next = { ...prev };
-          if (sessionId) {
-              next[date] = sessionId;
+          if (programId && sessionId) {
+              next[date] = { programId, sessionId };
           } else {
               delete next[date];
           }
@@ -95,7 +90,6 @@ export const WorkoutProvider = ({ children }) => {
     setMarkedDates({});
   };
 
-  // Log Key: @Log_${programId}_${sessionId}_${date}
   const getLog = async (programId, sessionId, date) => {
     try {
       const key = `@Log_${programId}_${sessionId}_${date}`;
@@ -124,7 +118,7 @@ export const WorkoutProvider = ({ children }) => {
                   const date = parts[parts.length - 1];
                   return { key: k, date };
               })
-              .filter(item => item.date < currentDateStr)
+              .filter(item => item.date < currentDateStr) // Strictly past
               .sort((a, b) => b.date.localeCompare(a.date));
 
           if (pastLogs.length > 0) {
@@ -143,12 +137,15 @@ export const WorkoutProvider = ({ children }) => {
 
   const saveLog = async (programId, sessionId, date, blocks) => {
     try {
-      // Logic 1-Day-1-Session: If switching session on same day, remove old log?
-      // sessionMap handles "active" session.
-      // We clean up if previous session different?
-      const previousSessionId = sessionMap[date];
-      if (previousSessionId && previousSessionId !== sessionId) {
-          const oldKey = `@Log_${programId}_${previousSessionId}_${date}`;
+      // 1-Day-1-Session Logic
+      // If we are saving a log for a date, we set this as the active session.
+      // If there was another session active, we might want to clear it?
+      // But the map handles the pointer. The old log file remains but is "detached" from the date in UI.
+      // Actually, to keep storage clean, we could delete the old log if it differs.
+
+      const prev = sessionMap[date];
+      if (prev && (prev.programId !== programId || prev.sessionId !== sessionId)) {
+          const oldKey = `@Log_${prev.programId}_${prev.sessionId}_${date}`;
           await AsyncStorage.removeItem(oldKey);
       }
 
@@ -160,23 +157,34 @@ export const WorkoutProvider = ({ children }) => {
 
       if (blocks.length > 0) {
           await AsyncStorage.setItem(newKey, JSON.stringify(data));
-          setSessionForDate(date, sessionId);
+          setSessionForDate(date, programId, sessionId);
       } else {
           await AsyncStorage.removeItem(newKey);
-          // If purely empty, do we keep session assignment?
-          // User wants "toggle". If I select, it stays.
-          // So even if empty, we might want to keep the mapping if user explicitly selected it.
-          // But here we are saving *blocks*.
-          // setSessionForDate is also called from Home when clicking the button.
+          // If empty, keep assignment if manually selected?
+          // Usually better to keep assignment so user sees "Empty Log" instead of nothing.
+          // But if truly empty, maybe remove from map?
+          // Let's keep map assignment for explicit user choice.
+          setSessionForDate(date, programId, sessionId);
       }
     } catch (e) {
       console.error("Failed to save log", e);
     }
   };
 
+  // --- Program Management ---
+
   const addProgram = (name) => {
-    const id = Date.now().toString();
-    setPrograms([...programs, { id, name }]);
+    const id = 'prog_' + Date.now();
+    const newProg = {
+        id,
+        name,
+        sessions: [
+             { id: 'sess_' + Date.now() + '_1', name: 'Push' },
+             { id: 'sess_' + Date.now() + '_2', name: 'Pull' },
+             { id: 'sess_' + Date.now() + '_3', name: 'Legs' }
+        ]
+    };
+    setPrograms([...programs, newProg]);
     setCurrentProgram(id);
   };
 
@@ -185,7 +193,7 @@ export const WorkoutProvider = ({ children }) => {
   };
 
   const deleteProgram = async (id) => {
-      if (programs.length <= 1) return; // Prevent deleting last program?
+      if (programs.length <= 1) return;
 
       const newPrograms = programs.filter(p => p.id !== id);
       setPrograms(newPrograms);
@@ -206,52 +214,57 @@ export const WorkoutProvider = ({ children }) => {
       }
   };
 
-  const addSession = (name) => {
-      const id = Date.now().toString();
-      setSessions([...sessions, { id, name }]);
+  // --- Session Management ---
+
+  const addSession = (programId, name) => {
+      const sessId = 'sess_' + Date.now();
+      setPrograms(programs.map(p => {
+          if (p.id === programId) {
+              return { ...p, sessions: [...p.sessions, { id: sessId, name }] };
+          }
+          return p;
+      }));
   };
 
-  const updateSession = (id, newName) => {
-      setSessions(sessions.map(s => s.id === id ? { ...s, name: newName } : s));
+  const updateSession = (programId, sessionId, newName) => {
+      setPrograms(programs.map(p => {
+          if (p.id === programId) {
+              return {
+                  ...p,
+                  sessions: p.sessions.map(s => s.id === sessionId ? { ...s, name: newName } : s)
+              };
+          }
+          return p;
+      }));
   };
 
-  const deleteSession = async (id) => {
+  const deleteSession = async (programId, sessionId) => {
       try {
-          // Remove from list
-          const newSessions = sessions.filter(s => s.id !== id);
-          setSessions([...newSessions]);
+          setPrograms(programs.map(p => {
+              if (p.id === programId) {
+                  return { ...p, sessions: p.sessions.filter(s => s.id !== sessionId) };
+              }
+              return p;
+          }));
 
           // Remove from map
           setSessionMap(prev => {
               const next = { ...prev };
               Object.keys(next).forEach(date => {
-                  if (next[date] === id) {
+                  if (next[date]?.sessionId === sessionId && next[date]?.programId === programId) {
                       delete next[date];
                   }
               });
               return next;
           });
 
-          // Remove logs
+          // Remove logs: @Log_${programId}_${sessionId}_${date}
           const keys = await AsyncStorage.getAllKeys();
-          const toRemove = [];
+          const prefix = `@Log_${programId}_${sessionId}_`;
+          const toRemove = keys.filter(k => k.startsWith(prefix));
 
-          // Filter logs containing this sessionId
-          // Key: @Log_${programId}_${sessionId}_${date}
-          // We can't strictly use prefix, need to match middle segment.
-          // But we can iterate.
-
-          const relevantKeys = keys.filter(key => {
-               const parts = key.split('_');
-               // parts[0] = @Log
-               // parts[1] = programId
-               // parts[2] = sessionId
-               // parts[3] = date
-               return parts.length >= 4 && parts[2] === id;
-          });
-
-          if (relevantKeys.length > 0) {
-              await AsyncStorage.multiRemove(relevantKeys);
+          if (toRemove.length > 0) {
+              await AsyncStorage.multiRemove(toRemove);
           }
       } catch (e) {
           console.error("Failed to delete session logs", e);
@@ -261,26 +274,21 @@ export const WorkoutProvider = ({ children }) => {
   const resetAllData = async () => {
       try {
           await AsyncStorage.clear();
-          // Reset State
-          setPrograms([{ id: 'default_prog', name: 'Program 1' }]);
-          setCurrentProgram('default_prog');
-          setSessions([
-             { id: 's1', name: 'Push' },
-             { id: 's2', name: 'Pull' },
-             { id: 's3', name: 'Legs' },
-             { id: 's4', name: 'Upper' },
-             { id: 's5', name: 'Lower' },
-             { id: 's6', name: 'Full Body' },
-             { id: 's7', name: 'Cardio' },
-             { id: 's8', name: 'Rest' }
-          ]);
-          setSessionMap({});
-          // setBlocks([]); // State is in HomeScreen, not here. Context reset handles data source.
-
           try {
               await Updates.reloadAsync();
           } catch (e) {
-              console.log("Expo Updates reload not available");
+              // Reload manually if needed or just let state reset on next mount
+              console.log("Reload not available");
+              // Force reload state manually to default
+              const defaultProgId = 'prog_' + Date.now();
+              const defaultSessions = [
+                   { id: 'sess_' + Date.now() + '_1', name: 'Push' },
+                   { id: 'sess_' + Date.now() + '_2', name: 'Pull' },
+                   { id: 'sess_' + Date.now() + '_3', name: 'Legs' }
+              ];
+              setPrograms([{ id: defaultProgId, name: 'Program 1', sessions: defaultSessions }]);
+              setCurrentProgram(defaultProgId);
+              setSessionMap({});
           }
       } catch (e) {
           console.error("Reset failed", e);
@@ -292,7 +300,6 @@ export const WorkoutProvider = ({ children }) => {
       programs,
       currentProgram,
       setCurrentProgram,
-      sessions,
       markedDates,
       sessionMap,
       addProgram,

@@ -1,16 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components/native';
-import { X } from 'lucide-react-native';
+import { X, GripVertical } from 'lucide-react-native';
+import { TouchableOpacity } from 'react-native';
 
 const Container = styled.View`
-  padding-left: 12px;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 0;
   margin: 8px 16px;
+  background-color: ${props => props.theme.colors.background};
+  min-height: 60px;
+`;
+
+const DragHandle = styled.TouchableOpacity`
+  padding: 8px;
+  justify-content: center;
+  align-items: center;
+`;
+
+const ContentContainer = styled.View`
+  flex: 1;
+  padding-left: 12px;
   border-left-width: 2px;
   border-left-color: ${props => props.theme.colors.primary};
   position: relative;
-  min-height: 60px;
-  background-color: ${props => props.theme.colors.background};
-  width: 90%;
 `;
 
 const TitleInput = styled.TextInput`
@@ -35,15 +48,10 @@ const DeleteButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-export default function ExerciseBlock({ title, content, onUpdate, onFocus, onDelete, placeholder }) {
+export default function ExerciseBlock({ title, content, onUpdate, onFocus, onDelete, placeholder, drag }) {
   const [localTitle, setLocalTitle] = useState(title);
   const [localContent, setLocalContent] = useState(content);
 
-  // Sync with props if they change externally (e.g. initial load or drag swap)
-  // We use a ref to prevent sync if we are the ones editing.
-  // Actually, simplest is to sync only when prop is different and we are NOT focused?
-  // But we might be swapped while focused.
-  // Standard pattern: Sync on prop change.
   useEffect(() => {
     setLocalTitle(title);
   }, [title]);
@@ -66,29 +74,36 @@ export default function ExerciseBlock({ title, content, onUpdate, onFocus, onDel
 
   return (
     <Container>
-      {onDelete && (
-        <DeleteButton onPress={onDelete}>
-          <X size={16} color="#8E8E93" />
-        </DeleteButton>
+      {drag && (
+        <DragHandle onLongPress={drag}>
+          <GripVertical size={20} color="#C7C7CC" />
+        </DragHandle>
       )}
-      <TitleInput
-        value={localTitle}
-        onChangeText={setLocalTitle}
-        onBlur={handleTitleBlur}
-        placeholder="Exercise Name"
-        placeholderTextColor="#999"
-        onFocus={onFocus}
-      />
-      <ContentInput
-        multiline
-        value={localContent}
-        onChangeText={setLocalContent}
-        onBlur={handleContentBlur}
-        placeholder={placeholder || "Sets x Reps @ Weight..."}
-        placeholderTextColor="#999"
-        scrollEnabled={false}
-        onFocus={onFocus}
-      />
+      <ContentContainer>
+        {onDelete && (
+          <DeleteButton onPress={onDelete}>
+            <X size={16} color="#8E8E93" />
+          </DeleteButton>
+        )}
+        <TitleInput
+          value={localTitle}
+          onChangeText={setLocalTitle}
+          onBlur={handleTitleBlur}
+          placeholder="Exercise Name"
+          placeholderTextColor="#999"
+          onFocus={onFocus}
+        />
+        <ContentInput
+          multiline
+          value={localContent}
+          onChangeText={setLocalContent}
+          onBlur={handleContentBlur}
+          placeholder={placeholder || "Sets x Reps @ Weight..."}
+          placeholderTextColor="#999"
+          scrollEnabled={false}
+          onFocus={onFocus}
+        />
+      </ContentContainer>
     </Container>
   );
 }

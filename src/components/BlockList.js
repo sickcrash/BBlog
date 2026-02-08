@@ -75,8 +75,6 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
     return (
         <ScaleDecorator>
             <TouchableOpacity
-              onLongPress={drag}
-              disabled={isActive}
               activeOpacity={1}
               style={{
                  opacity: isActive ? 0.7 : 1,
@@ -93,6 +91,8 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
                    placeholder={item.placeholder}
                    onUpdate={(updates) => handleUpdateBlock(index, { ...item, ...updates })}
                    onDelete={() => handleDeleteBlock(index)}
+                   drag={drag}
+                   onFocus={() => {}}
                  />
               ) : (
                  <TextBlock
@@ -100,6 +100,8 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
                    placeholder={item.placeholder}
                    onUpdate={(content) => handleUpdateBlock(index, { ...item, content })}
                    onDelete={() => handleDeleteBlock(index)}
+                   drag={drag}
+                   onFocus={() => {}}
                  />
               )}
             </TouchableOpacity>

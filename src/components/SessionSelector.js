@@ -70,9 +70,13 @@ const DeleteButton = styled.TouchableOpacity`
 `;
 
 export default function SessionSelector({ selectedSession, onSelect }) {
-  const { sessions, addSession, updateSession, deleteSession } = useWorkout();
+  const { programs, currentProgram, addSession, updateSession, deleteSession } = useWorkout();
   const [editingSession, setEditingSession] = useState(null);
   const [editValue, setEditValue] = useState('');
+
+  // Get sessions for the current program
+  const currentProgramData = programs.find(p => p.id === currentProgram);
+  const sessions = currentProgramData ? currentProgramData.sessions : [];
 
   const handlePress = (session) => {
     if (selectedSession === session.id) {
@@ -88,8 +92,7 @@ export default function SessionSelector({ selectedSession, onSelect }) {
 
   const handleSubmit = () => {
     if (editingSession && editValue.trim()) {
-      updateSession(editingSession.id, editValue.trim());
-      // No need to call onSelect, ID hasn't changed
+      updateSession(currentProgram, editingSession.id, editValue.trim());
     }
     setEditingSession(null);
   };
@@ -104,7 +107,7 @@ export default function SessionSelector({ selectedSession, onSelect }) {
                   text: "Delete",
                   style: "destructive",
                   onPress: () => {
-                      deleteSession(session.id);
+                      deleteSession(currentProgram, session.id);
                       setEditingSession(null);
                       if (selectedSession === session.id) {
                           onSelect(null);
@@ -150,7 +153,7 @@ export default function SessionSelector({ selectedSession, onSelect }) {
           </Chip>
         ))}
 
-        <AddButton onPress={() => addSession('New Session')}>
+        <AddButton onPress={() => addSession(currentProgram, 'New Session')}>
             <Plus size={20} color="#007AFF" />
         </AddButton>
       </Scroll>
