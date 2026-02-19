@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, TextInput, FlatList, Alert } from 'react-native';
 import styled from 'styled-components/native';
 import { useWorkout } from '../context/WorkoutContext';
-import { X, Check, Pencil } from 'lucide-react-native';
+import { X, Check, Pencil, Trash2 } from 'lucide-react-native';
 
 const ModalContainer = styled.View`
   flex: 1;
@@ -84,17 +84,31 @@ const AddButton = styled.TouchableOpacity`
 
 const ActionButton = styled.TouchableOpacity`
     padding: 4px;
+    margin-left: 8px;
+`;
+
+const ResetButton = styled.TouchableOpacity`
+    margin-top: 20px;
+    background-color: #FF3B30;
+    padding: 12px;
+    border-radius: 8px;
+    align-items: center;
+`;
+
+const ResetText = styled.Text`
+    color: white;
+    font-weight: bold;
 `;
 
 export default function ProgramModal({ visible, onClose }) {
-  const { programs, currentProgram, setCurrentProgram, addProgram, updateProgram } = useWorkout();
+  const { programs, currentProgram, setCurrentProgram, addProgram, updateProgram, deleteProgram, resetAllData } = useWorkout();
   const [newProgramName, setNewProgramName] = useState('');
   const [editingProgram, setEditingProgram] = useState(null);
   const [editValue, setEditValue] = useState('');
 
   const handleSelect = (program) => {
     if (editingProgram) return;
-    setCurrentProgram(program);
+    setCurrentProgram(program.id);
     onClose();
   };
 
@@ -117,6 +131,35 @@ export default function ProgramModal({ visible, onClose }) {
       setEditingProgram(null);
   };
 
+  const handleDelete = (program) => {
+      Alert.alert(
+          "Delete Program",
+          "Are you sure you want to delete this program and all its logs?",
+          [
+              { text: "Cancel", style: "cancel" },
+              {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => {
+                      deleteProgram(program.id);
+                      setEditingProgram(null);
+                  }
+              }
+          ]
+      );
+  };
+
+  const handleReset = () => {
+      Alert.alert(
+          "Reset All Data",
+          "This will wipe all app data properly. Cannot be undone.",
+          [
+              { text: "Cancel", style: "cancel" },
+              { text: "Reset", style: "destructive", onPress: resetAllData }
+          ]
+      );
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <ModalContainer>
@@ -130,11 +173,11 @@ export default function ProgramModal({ visible, onClose }) {
 
           <FlatList
             data={programs}
-            keyExtractor={item => item}
+            keyExtractor={item => item.id}
             renderItem={({ item }) => (
               <ProgramItem onPress={() => handleSelect(item)}>
                 <ProgramRowLeft>
-                    {editingProgram === item ? (
+                    {editingProgram?.id === item.id ? (
                         <EditInput
                             value={editValue}
                             onChangeText={setEditValue}
@@ -144,13 +187,17 @@ export default function ProgramModal({ visible, onClose }) {
                         />
                     ) : (
                         <>
-                            <ProgramText active={item === currentProgram}>{item}</ProgramText>
-                            {item === currentProgram && <Check size={16} color="#007AFF" />}
+                            <ProgramText active={item.id === currentProgram}>{item.name}</ProgramText>
+                            {item.id === currentProgram && <Check size={16} color="#007AFF" />}
                         </>
                     )}
                 </ProgramRowLeft>
 
-                {!editingProgram && (
+                {editingProgram?.id === item.id ? (
+                     <ActionButton onPress={() => handleDelete(item)}>
+                         <Trash2 size={20} color="#FF3B30" />
+                     </ActionButton>
+                ) : (
                     <ActionButton onPress={() => startEdit(item)}>
                         <Pencil size={16} color="#8E8E93" />
                     </ActionButton>
@@ -169,6 +216,10 @@ export default function ProgramModal({ visible, onClose }) {
               <Text style={{color: 'white', fontWeight: '600'}}>Add</Text>
             </AddButton>
           </NewProgramRow>
+
+          <ResetButton onPress={handleReset}>
+              <ResetText>Reset All Data (Debug)</ResetText>
+          </ResetButton>
         </Content>
       </ModalContainer>
     </Modal>

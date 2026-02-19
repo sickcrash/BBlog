@@ -19,11 +19,15 @@ export default function HomeScreen() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [isProgramVisible, setProgramVisible] = useState(false);
-  const { currentProgram, getLog, saveLog, getLastLog, sessionMap, sessions } = useWorkout();
+  const { programs, currentProgram, getLog, saveLog, getLastLog, sessionMap, setSessionForDate } = useWorkout();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blocks, setBlocks] = useState([]);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
+
+  // Derive sessions for current program
+  const currentProgramData = programs.find(p => p.id === currentProgram);
+  const sessions = currentProgramData ? currentProgramData.sessions : [];
 
   const handleDateSelect = (dateString) => {
     setCurrentDate(new Date(dateString));
@@ -32,12 +36,23 @@ export default function HomeScreen() {
 
   useEffect(() => {
       // Look up session from sessionMap
-      if (sessionMap && sessionMap[dateStr]) {
-          setSelectedSession(sessionMap[dateStr]);
+      const mapped = sessionMap[dateStr];
+      if (mapped && mapped.programId === currentProgram && mapped.sessionId) {
+          setSelectedSession(mapped.sessionId);
       } else {
           setSelectedSession(null);
       }
-  }, [dateStr, sessionMap]);
+  }, [dateStr, sessionMap, currentProgram]);
+
+  const handleSessionSelect = (sessionId) => {
+    if (sessionId === selectedSession) {
+        setSelectedSession(null);
+        setSessionForDate(dateStr, null, null);
+    } else {
+        setSelectedSession(sessionId);
+        setSessionForDate(dateStr, currentProgram, sessionId);
+    }
+  };
 
   useEffect(() => {
     const loadLogs = async () => {
@@ -53,8 +68,9 @@ export default function HomeScreen() {
                    if (block.type === 'exercise') {
                        return {
                            ...block,
-                           id: Date.now().toString() + Math.random().toString(), // Ensure new IDs
-                           content: '',
+                           id: Date.now().toString() + Math.random().toString(),
+                           content: '', // Real content empty
+                           title: block.title, // Copy title as real text
                            placeholder: `Last: ${block.content || '...'}`
                        };
                    } else if (block.type === 'text') {
@@ -62,7 +78,7 @@ export default function HomeScreen() {
                            ...block,
                            id: Date.now().toString() + Math.random().toString(),
                            content: '',
-                           placeholder: block.content ? `Last note: ${block.content}` : 'Write a note...'
+                           placeholder: block.content ? `Last: ${block.content}` : 'Write a note...'
                        }
                    }
                    return { ...block, id: Date.now().toString() + Math.random().toString(), content: '' };
@@ -79,20 +95,23 @@ export default function HomeScreen() {
     loadLogs();
   }, [currentProgram, selectedSession, dateStr]);
 
-  const handleUpdateBlocks = (newBlocks) => {
-    // If no session selected, try to select default (first session)
-    let sessionToUse = selectedSession;
-    if (!sessionToUse && newBlocks.length > 0) {
-        // Auto-select first session if available
-        if (sessions && sessions.length > 0) {
-            sessionToUse = sessions[0];
-            setSelectedSession(sessionToUse);
-        }
+  const handleUpdateBlocks = async (newBlocks) => {
+    let sessionToUseId = selectedSession;
+
+    // If adding blocks without a selected session, try to default to first available
+    if (!sessionToUseId && newBlocks.length > 0 && sessions.length > 0) {
+        sessionToUseId = sessions[0].id;
     }
 
-    if (sessionToUse && currentProgram) {
+    if (sessionToUseId && currentProgram) {
         setBlocks(newBlocks);
-        saveLog(currentProgram, sessionToUse, dateStr, newBlocks);
+        // Save
+        await saveLog(currentProgram, sessionToUseId, dateStr, newBlocks);
+
+        if (sessionToUseId !== selectedSession) {
+             setSelectedSession(sessionToUseId);
+             setSessionForDate(dateStr, currentProgram, sessionToUseId);
+        }
     }
   };
 
@@ -106,7 +125,7 @@ export default function HomeScreen() {
       />
       <SessionSelector
         selectedSession={selectedSession}
-        onSelect={setSelectedSession}
+        onSelect={handleSessionSelect}
       />
       <BlockList
         blocks={blocks}
@@ -116,6 +135,7 @@ export default function HomeScreen() {
         visible={isCalendarVisible}
         onClose={() => setCalendarVisible(false)}
         onSelectDate={handleDateSelect}
+        selectedDate={dateStr}
       />
       <ProgramModal
         visible={isProgramVisible}

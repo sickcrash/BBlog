@@ -42,14 +42,16 @@ const DateText = styled.Text`
 `;
 
 export default function Header({ onProgramPress, onDatePress, date }) {
-  const { currentProgram } = useWorkout();
+  const { programs, currentProgram } = useWorkout();
   const dateStr = format(date || new Date(), 'MMM d');
   const isToday = isSameDay(date || new Date(), new Date());
+
+  const programName = programs.find(p => p.id === currentProgram)?.name || 'Select Program';
 
   return (
     <Container>
       <ProgramBadge onPress={onProgramPress}>
-        <ProgramText>{currentProgram}</ProgramText>
+        <ProgramText>{programName}</ProgramText>
         <ChevronDown size={16} color="white" />
       </ProgramBadge>
 

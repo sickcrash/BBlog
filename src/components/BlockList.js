@@ -1,11 +1,10 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity as RNTouchableOpacity } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import TextBlock from './TextBlock';
 import ExerciseBlock from './ExerciseBlock';
 import { Plus, Trash2 } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
-import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 
 const AddButtonContainer = styled.View`
   flex-direction: row;
@@ -14,8 +13,8 @@ const AddButtonContainer = styled.View`
   gap: 16px;
 `;
 
-// Use RNTouchableOpacity for static buttons to ensure they work reliably
-const AddButton = styled(RNTouchableOpacity)`
+// Use TouchableOpacity for static buttons to ensure they work reliably
+const AddButton = styled(TouchableOpacity)`
   background-color: ${props => props.theme.colors.highlight};
   padding: 10px 20px;
   border-radius: 20px;
@@ -29,7 +28,7 @@ const AddButtonText = styled.Text`
   margin-left: 8px;
 `;
 
-const ClearButton = styled(RNTouchableOpacity)`
+const ClearButton = styled(TouchableOpacity)`
   margin-top: 16px;
   margin-bottom: 32px;
   align-self: center;
@@ -56,9 +55,10 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
   };
 
   const handleAddBlock = (type) => {
+    const uniqueId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     const newBlock = type === 'exercise'
-      ? { type: 'exercise', title: '', content: '', id: Date.now().toString() }
-      : { type: 'text', content: '', id: Date.now().toString() };
+      ? { type: 'exercise', title: '', content: '', id: uniqueId }
+      : { type: 'text', content: '', id: uniqueId };
     onUpdateBlocks([...blocks, newBlock]);
   };
 
@@ -72,39 +72,40 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
   };
 
   const renderItem = ({ item, drag, isActive, index }) => {
-    if (index === undefined) return null;
-
-    // Use GHTouchableOpacity for draggable items
     return (
-      <ScaleDecorator>
-        <GHTouchableOpacity
-          onLongPress={drag}
-          disabled={isActive}
-          activeOpacity={1}
-          style={{
-             opacity: isActive ? 0.7 : 1,
-             backgroundColor: isActive ? '#f0f0f0' : 'transparent'
-          }}
-        >
-          {item.type === 'exercise' ? (
-             <ExerciseBlock
-               title={item.title}
-               content={item.content}
-               placeholder={item.placeholder}
-               onTitleChange={(text) => handleUpdateBlock(index, { ...item, title: text })}
-               onContentChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
-               onDelete={() => handleDeleteBlock(index)}
-             />
-          ) : (
-             <TextBlock
-               content={item.content}
-               placeholder={item.placeholder}
-               onChange={(text) => handleUpdateBlock(index, { ...item, content: text })}
-               onDelete={() => handleDeleteBlock(index)}
-             />
-          )}
-        </GHTouchableOpacity>
-      </ScaleDecorator>
+        <ScaleDecorator>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={{
+                 opacity: isActive ? 0.7 : 1,
+                 backgroundColor: isActive ? '#f0f0f0' : 'transparent',
+                 minHeight: 50,
+                 width: '100%',
+                 marginBottom: 8
+              }}
+            >
+              {item.type === 'exercise' ? (
+                 <ExerciseBlock
+                   title={item.title}
+                   content={item.content}
+                   placeholder={item.placeholder}
+                   onUpdate={(updates) => handleUpdateBlock(index, { ...item, ...updates })}
+                   onDelete={() => handleDeleteBlock(index)}
+                   drag={drag}
+                   onFocus={() => {}}
+                 />
+              ) : (
+                 <TextBlock
+                   content={item.content}
+                   placeholder={item.placeholder}
+                   onUpdate={(content) => handleUpdateBlock(index, { ...item, content })}
+                   onDelete={() => handleDeleteBlock(index)}
+                   drag={drag}
+                   onFocus={() => {}}
+                 />
+              )}
+            </TouchableOpacity>
+        </ScaleDecorator>
     );
   };
 
@@ -112,12 +113,13 @@ export default function BlockList({ blocks = [], onUpdateBlocks }) {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 44 : 0}
     >
       <DraggableFlatList
         data={blocks}
+        extraData={blocks}
         onDragEnd={({ data }) => onUpdateBlocks(data)}
-        keyExtractor={(item) => item.id || `block-${Math.random()}`}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
         ListFooterComponent={() => (

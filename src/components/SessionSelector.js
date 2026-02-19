@@ -14,14 +14,26 @@ const Scroll = styled.ScrollView`
   padding-left: 16px;
 `;
 
-const Chip = styled.TouchableOpacity`
+const Chip = styled.View`
   background-color: ${props => props.selected ? props.theme.colors.primary : props.theme.colors.highlight};
-  padding: 8px 16px;
   border-radius: 16px;
   margin-right: 8px;
   min-width: 60px;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+`;
+
+const ChipTouchable = styled.TouchableOpacity`
+  padding: 8px 16px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const EditContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 16px;
 `;
 
 const ChipContent = styled.View`
@@ -54,31 +66,33 @@ const EditInput = styled.TextInput`
 const DeleteButton = styled.TouchableOpacity`
   margin-left: 8px;
   padding: 4px;
+  z-index: 10;
 `;
 
 export default function SessionSelector({ selectedSession, onSelect }) {
-  const { sessions, addSession, updateSession, deleteSession } = useWorkout();
+  const { programs, currentProgram, addSession, updateSession, deleteSession } = useWorkout();
   const [editingSession, setEditingSession] = useState(null);
   const [editValue, setEditValue] = useState('');
 
+  // Get sessions for the current program
+  const currentProgramData = programs.find(p => p.id === currentProgram);
+  const sessions = currentProgramData ? currentProgramData.sessions : [];
+
   const handlePress = (session) => {
-    if (selectedSession === session) {
+    if (selectedSession === session.id) {
       // Already selected, enter edit mode
       setEditingSession(session);
-      setEditValue(session);
+      setEditValue(session.name);
     } else {
       // Select it
-      onSelect(session);
+      onSelect(session.id);
       setEditingSession(null);
     }
   };
 
   const handleSubmit = () => {
     if (editingSession && editValue.trim()) {
-      updateSession(editingSession, editValue.trim());
-      if (selectedSession === editingSession) {
-          onSelect(editValue.trim());
-      }
+      updateSession(currentProgram, editingSession.id, editValue.trim());
     }
     setEditingSession(null);
   };
@@ -86,16 +100,16 @@ export default function SessionSelector({ selectedSession, onSelect }) {
   const handleDelete = (session) => {
       Alert.alert(
           "Delete Session",
-          `Are you sure you want to delete "${session}"?`,
+          `Are you sure you want to delete "${session.name}"?`,
           [
               { text: "Cancel", style: "cancel" },
               {
                   text: "Delete",
                   style: "destructive",
                   onPress: () => {
-                      deleteSession(session);
+                      deleteSession(currentProgram, session.id);
                       setEditingSession(null);
-                      if (selectedSession === session) {
+                      if (selectedSession === session.id) {
                           onSelect(null);
                       }
                   }
@@ -109,13 +123,11 @@ export default function SessionSelector({ selectedSession, onSelect }) {
       <Scroll horizontal showsHorizontalScrollIndicator={false}>
         {sessions.map((session) => (
           <Chip
-            key={session}
-            selected={selectedSession === session}
-            onPress={() => handlePress(session)}
-            activeOpacity={0.7}
+            key={session.id}
+            selected={selectedSession === session.id}
           >
-            {editingSession === session ? (
-              <ChipContent>
+            {editingSession?.id === session.id ? (
+              <EditContainer>
                 <EditInput
                   value={editValue}
                   onChangeText={setEditValue}
@@ -126,20 +138,22 @@ export default function SessionSelector({ selectedSession, onSelect }) {
                 />
                 <DeleteButton
                     onPress={() => handleDelete(session)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                     <X size={16} color="white" />
                 </DeleteButton>
-              </ChipContent>
+              </EditContainer>
             ) : (
-              <ChipContent>
-                 <ChipText selected={selectedSession === session}>{session}</ChipText>
-              </ChipContent>
+              <ChipTouchable onPress={() => handlePress(session)}>
+                 <ChipContent>
+                    <ChipText selected={selectedSession === session.id}>{session.name}</ChipText>
+                 </ChipContent>
+              </ChipTouchable>
             )}
           </Chip>
         ))}
 
-        <AddButton onPress={() => addSession('New Session')}>
+        <AddButton onPress={() => addSession(currentProgram, 'New Session')}>
             <Plus size={20} color="#007AFF" />
         </AddButton>
       </Scroll>
